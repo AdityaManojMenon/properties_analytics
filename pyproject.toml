@@ -12,7 +12,8 @@ dependencies = [
     "numpy (>=2.2.6,<3.0.0)",
     "matplotlib (>=3.10.3,<4.0.0)",
     "seaborn (>=0.13.2,<0.14.0)",
-    "scikit-learn (>=1.6.1,<2.0.0)"
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "pandas-datareader (>=0.10.0,<0.11.0)"
 ]
 
 
@@ -26,4 +27,6 @@ notebook = "^7.4.3"
 ipykernel = "^6.29.5"
 black = "^25.1.0"
 isort = "^6.0.1"
+pandas-datareader = "^0.10.0"
+python-dotenv = "^1.1.0"
 
