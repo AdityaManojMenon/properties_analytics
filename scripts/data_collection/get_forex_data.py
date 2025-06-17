@@ -56,6 +56,8 @@ out["Month"] = out["DATE"].dt.strftime("%B")
 out = out[["Date", "Year", "Month"] + cols_order]
 
 # save
-csv_name = "usd_monthly_fx_2010_2025.csv"
+output_dir = "data/processed"
+os.makedirs(output_dir, exist_ok=True)
+csv_name = os.path.join(output_dir, "usd_monthly_fx_2010_2025.csv")
 out.to_csv(csv_name, index=False)
 print(f"Saved → {csv_name}  ({len(out):,} rows)")
