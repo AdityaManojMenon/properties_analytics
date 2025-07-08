@@ -2,7 +2,7 @@ import scrapy
 import json
 
 class PropertyfinderSalesSpider(scrapy.Spider):
-    name = "propertyfinder_sales"
+    name = "dubai_sales"
     allowed_domains = ["propertyfinder.ae"]
     start_urls = ["https://www.propertyfinder.ae/en/buy/dubai/properties-for-sale.html"]
 
@@ -56,7 +56,7 @@ class PropertyfinderSalesSpider(scrapy.Spider):
         #hading pagation for testing want to only scrape a little since no proxy rotation implemented yet
         max_num_pages = 5
         next_page = current_page + 1
-        if current_page <= max_num_pages:
+        if current_page < max_num_pages:
             next_url = f"https://www.propertyfinder.ae/en/buy/dubai/properties-for-sale.html?page={next_page}"
             yield scrapy.Request(next_url, callback=self.parse, meta={"page": next_page})
         

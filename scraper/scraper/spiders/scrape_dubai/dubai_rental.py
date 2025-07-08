@@ -2,7 +2,7 @@ import scrapy
 import json
 
 class PropertyfinderRentalSpider(scrapy.Spider):
-    name = "propertyfinder_rental"
+    name = "dubai_rental"
     allowed_domains = ["propertyfinder.ae"]
     start_urls = [
         "https://www.propertyfinder.ae/en/rent/dubai/properties-for-rent.html"
