@@ -24,7 +24,7 @@ ROBOTSTXT_OBEY = False
 # Concurrency and throttling settings
 #CONCURRENT_REQUESTS = 16
 CONCURRENT_REQUESTS_PER_DOMAIN = 1
-DOWNLOAD_DELAY = 3 # 3 seconds to avoid suspicion
+DOWNLOAD_DELAY = 5 # 3 seconds to avoid suspicion
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
@@ -34,6 +34,7 @@ DOWNLOAD_DELAY = 3 # 3 seconds to avoid suspicion
 
 # Override the default request headers:
 #
+
 DEFAULT_REQUEST_HEADERS = {
    # 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
@@ -48,14 +49,14 @@ DEFAULT_REQUEST_HEADERS = {
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-    # Scrapy User-Agents
+    # Remove this line 👇
+    # 'scraper.middlewares.RandomDelayMiddleware': 444,
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
-    
-    # Scrapy Rotating Proxies
     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
 }
+
 
 # Add a list of proxies to use. 
 # For production, you should use reliable paid proxies.
@@ -80,16 +81,16 @@ ROTATING_PROXY_LIST = [
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
-#AUTOTHROTTLE_ENABLED = True
+AUTOTHROTTLE_ENABLED = True
 # The initial download delay
-#AUTOTHROTTLE_START_DELAY = 5
+AUTOTHROTTLE_START_DELAY = 10  # Start gently with 5 seconds
 # The maximum download delay to be set in case of high latencies
-#AUTOTHROTTLE_MAX_DELAY = 60
+AUTOTHROTTLE_MAX_DELAY = 40  # Go up to 20 seconds if server seems slow
 # The average number of requests Scrapy should be sending in parallel to
 # each remote server
-#AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0
+AUTOTHROTTLE_TARGET_CONCURRENCY = 1  # Lower concurrency for human-like behavior
 # Enable showing throttling stats for every response received:
-#AUTOTHROTTLE_DEBUG = False
+AUTOTHROTTLE_DEBUG = False  # Set True if you want verbose throttle stats
 
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings

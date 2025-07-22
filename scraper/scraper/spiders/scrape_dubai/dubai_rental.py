@@ -1,5 +1,6 @@
 import scrapy
 import json
+import time
 
 class PropertyfinderRentalSpider(scrapy.Spider):
     name = "dubai_rental"
@@ -12,25 +13,24 @@ class PropertyfinderRentalSpider(scrapy.Spider):
         current_page = response.meta.get("page", 1)
         self.logger.info(f"Scraping rentals page {current_page}: {response.url}")
 
-        # Extract embedded JSON
         data = response.css("script#__NEXT_DATA__::text").get()
         if not data:
             self.logger.warning("No embedded JSON found in script tag")
             return
+
         try:
             json_data = json.loads(data)
         except json.JSONDecodeError:
             self.logger.error("Failed to parse JSON")
             return
 
-        # Extract listings
         listings = json_data.get("props", {}) \
                             .get("pageProps", {}) \
                             .get("searchResult", {}) \
                             .get("listings", [])
 
         if not listings:
-            self.logger.warning(f"No listings found on page {current_page}")
+            self.logger.info("No more listings found. Ending crawl.")
             return
 
         for listing in listings:
@@ -55,14 +55,16 @@ class PropertyfinderRentalSpider(scrapy.Spider):
                 "listed_date": prop.get("listed_date"),
             }
 
-        # Go to next page only if we haven't reached max_pages yet
-        max_pages = 5
-        if current_page < max_pages:
-            next_page = current_page + 1
-            next_url = f"https://www.propertyfinder.ae/en/rent/dubai/properties-for-rent.html?page={next_page}"
-            self.logger.info(f"Requesting next page: {next_url}")
-            yield scrapy.Request(
-                url=next_url,
-                callback=self.parse,
-                meta={"page": next_page}
-            )
+            # 👇 3-second delay between listings
+            self.logger.info("Sleeping for 3 seconds before next listing...")
+            time.sleep(3)
+
+        # Automatically move to the next page
+        next_page = current_page + 1
+        next_url = f"https://www.propertyfinder.ae/en/rent/dubai/properties-for-rent.html?page={next_page}"
+        self.logger.info(f"Requesting next page: {next_url}")
+        yield scrapy.Request(
+            url=next_url,
+            callback=self.parse,
+            meta={"page": next_page}
+        )

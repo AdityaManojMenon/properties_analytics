@@ -1,5 +1,6 @@
 import scrapy
 import json
+import time
 
 class PropertyfinderSalesSpider(scrapy.Spider):
     name = "dubai_sales"
@@ -7,35 +8,30 @@ class PropertyfinderSalesSpider(scrapy.Spider):
     start_urls = ["https://www.propertyfinder.ae/en/buy/dubai/properties-for-sale.html"]
 
     def parse(self, response):
+        current_page = response.meta.get("page", 1)
+        self.logger.info(f"Scraping sales page {current_page}: {response.url}")
 
-        #checking to see if failing to load page
-        current_page = response.meta.get("page",1)
-        self.logger.info(f"Scraping Page {current_page}: {response.url}")
         if response.status != 200:
             self.logger.warning(f"Failed to load page {current_page} with status {response.status}")
             return
-        
-        #Extract embedded JSON data
+
         data = response.css('script#__NEXT_DATA__::text').get()
         if not data:
             self.logger.warning("No JSON data found")
             return
-        
-        json_data = json.loads(data) 
 
         try:
+            json_data = json.loads(data)
             listings = json_data["props"]["pageProps"]["searchResult"]["listings"]
-        except KeyError:
-            self.logger.warning("Could not find listings key.")
+        except (KeyError, json.JSONDecodeError):
+            self.logger.warning("Could not find listings key or parse JSON.")
             return
 
         for listing in listings:
             prop = listing.get("property")
-            #if the key property exists but contains value None want to loop back if None to avoid Attribute Error
             if not prop:
-                self.logger.warning("Skipping a listing because property is None.")
+                self.logger.warning("Skipping listing with null 'property'")
                 continue
-
 
             yield {
                 "id": prop.get("id"),
@@ -52,14 +48,15 @@ class PropertyfinderSalesSpider(scrapy.Spider):
                 "url": response.urljoin(prop.get("share_url")),
                 "listed_date": prop.get("listed_date"),
             }
-        
-        #hading pagation for testing want to only scrape a little since no proxy rotation implemented yet
+
+            # 👇 Add delay between each listing
+            self.logger.info("Sleeping for 4 seconds before next listing...")
+            time.sleep(4)
+
+        # Temporary page limit (set for testing, remove or increase later)
         max_num_pages = 5
         next_page = current_page + 1
         if current_page < max_num_pages:
             next_url = f"https://www.propertyfinder.ae/en/buy/dubai/properties-for-sale.html?page={next_page}"
+            self.logger.info(f"Requesting next page: {next_url}")
             yield scrapy.Request(next_url, callback=self.parse, meta={"page": next_page})
-        
-        
-
-        
