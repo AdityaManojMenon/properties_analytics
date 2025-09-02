@@ -17,7 +17,8 @@ SERIES = {
     "EXSZUS": "USD_CHF",        
     "EXUSAL": "USD_AUD",        
     "EXINUS": "USD_INR",       
-    "EXCHUS": "USD_CNY"         
+    "EXCHUS": "USD_CNY",        
+    "EXHKUS": "USD_HKD"         
 }
 
 df_list = []
@@ -45,7 +46,8 @@ fx["USD_AED"] = 3.673
 # tidy up columns order
 cols_order = ["USD_AED", "USD_EUR", "USD_GBP",
               "USD_JPY", "USD_CAD", "USD_CHF",
-              "USD_AUD", "USD_INR", "USD_CNY"]
+              "USD_AUD", "USD_INR", "USD_CNY",
+              "USD_HKD"]
 fx = fx[cols_order]
 
 # add Date, Year, Month columns exactly like your template
