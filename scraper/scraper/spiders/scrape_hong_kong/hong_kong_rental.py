@@ -10,7 +10,7 @@ class HKHomesSpider(scrapy.Spider):
     allowed_domains = ["hongkonghomes.com"]
 
     def __init__(self, rpm: float = 5, jitter: float = 0.25, city: str = "Hong Kong",
-                 start_page: int = 1, max_pages: int = 300, listing_type="for-rent", **kwargs):
+                 start_page: int = 1, max_pages: int = 112, listing_type="for-rent", **kwargs):
         super().__init__(**kwargs)
         self.rpm = float(rpm)  # 5 requests/minute or 300 requests/hour
         self.jitter = float(jitter)  # +/- 25%

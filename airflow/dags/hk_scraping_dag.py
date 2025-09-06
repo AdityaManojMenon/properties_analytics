@@ -1,4 +1,4 @@
-from airflow import DAG
+rom airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 
@@ -27,7 +27,7 @@ with DAG(
         bash_command=(
             "TZ=America/New_York "
             "date && "
-            "bash /Users/am/Desktop/properties_analytics/scripts/scraping/run_hk_rentals.sh"
+            "bash /Users/am/Desktop/properties_analytics/scripts/scraping/run_hk_rentals.sh",
         ),
         execution_timeout=timedelta(hours=2),
         start_date=datetime(2025, 9, 5, 22, 0),  # Starts at sept 5th 2025 at 10 PM EST
@@ -39,7 +39,7 @@ with DAG(
         bash_command=(
             "TZ=America/New_York "
             "date && "
-            "bash /Users/am/Desktop/properties_analytics/scripts/scraping/run_hk_sales.sh"
+            "bash /Users/am/Desktop/properties_analytics/scripts/scraping/run_hk_sales.sh",
         ),
         execution_timeout=timedelta(hours=2),
         start_date=datetime(2025, 9, 6, 4, 0),  # Starts at sept 6th 2025 at 4 AM EST
