@@ -14,9 +14,9 @@ from google.cloud import bigquery
 class BigQueryPipeline:
     def __init__(self):
         # Pick up values from environment variables
-        self.project_id = os.environ["GOOGLE_CLOUD_PROJECT"]      # already exported
-        self.dataset_id = os.environ["BIGQUERY_DATASET"]          # you’ll export this
-        self.table_id = os.environ["BIGQUERY_TABLE"]              # you’ll export this
+        self.project_id = os.environ["GOOGLE_CLOUD_PROJECT"]      
+        self.dataset_id = os.environ["BIGQUERY_DATASET"]          
+        self.table_id = os.environ["BIGQUERY_TABLE"]              
         self.client = bigquery.Client(project=self.project_id)
 
     @classmethod
@@ -26,7 +26,10 @@ class BigQueryPipeline:
     def process_item(self, item, spider):
         row = dict(item)
         row["source"] = spider.name
+
         row["scraped_at"] = datetime.datetime.utcnow().isoformat()
+
+        # Keep raw copy for debugging
         row["raw"] = json.dumps(item)
 
         table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
@@ -34,4 +37,3 @@ class BigQueryPipeline:
         if errors:
             spider.logger.error(f"BigQuery insert errors: {errors}")
         return item
-
