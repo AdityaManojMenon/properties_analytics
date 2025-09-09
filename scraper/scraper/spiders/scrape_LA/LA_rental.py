@@ -41,11 +41,7 @@ class RedfinLARentalSpider(scrapy.Spider):
         return f"https://www.redfin.com/stingray/api/gis?{urlencode(params)}"
 
     def start_requests(self):
-        yield scrapy.Request(
-            self._url(self.start_index),
-            callback=self.parse_json,
-            meta={"start_index": self.start_index},
-        )
+        yield scrapy.Request(self._url(self.start_index),callback=self.parse_json,meta={"start_index": self.start_index},)
 
     async def parse_json(self, response):
         text = response.text
