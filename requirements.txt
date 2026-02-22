@@ -1,126 +1,24 @@
-# Property Analytics Project Requirements
-# Single file with all dependencies - compatible versions
+# Core
+pandas>=2.2
+numpy>=1.24
+python-dotenv>=1.0
 
-# Core Data Processing
-pandas>=2.2.0
-numpy>=1.24.0
-sqlalchemy>=1.4.0,<2.0.0
-psycopg2-binary>=2.9.0
+# Scraping
+scrapy>=2.11
+lxml>=4.9
 
-# Web Scraping & Crawling
-scrapy>=2.8.0
-selenium>=4.8.0
-lxml>=4.9.0
-scrapy-rotating-proxies>=0.6.0
-scrapy-user-agents>=0.1.0
-fake-useragent>=1.1.0
-scrapy-playwright>=0.0.43
-playwright>=1.43.0
+# Warehouse
+google-cloud-bigquery>=3.17
+google-auth>=2.28
 
-# Google Cloud Platform
-google-cloud-storage>=2.7.0
-google-cloud-bigquery>=3.4.0
-google-auth>=2.16.0
-google-auth-oauthlib>=0.8.0
-google-auth-httplib2>=0.1.0
+# Orchestration
+prefect>=2.16
 
-# Apache Airflow & Workflow
-apache-airflow>=2.10.0,<3.0.0
-apache-airflow-providers-google>=10.0.0
-apache-airflow-providers-postgres>=5.4.0
-apache-airflow-providers-slack>=7.3.0
-apache-airflow-providers-http>=4.2.0
-celery>=5.2.0
-redis>=4.3.0
-pendulum>=3.0.0
+# Transformations
+dbt-core>=1.7
+dbt-bigquery>=1.7
 
-# dbt & Data Transformation
-dbt-core>=1.4.0
-dbt-bigquery>=1.4.0
-
-# Data Quality & Testing
-great-expectations>=0.15.0
-pydantic>=1.10.0
-
-# Data Analysis & Visualization
-matplotlib>=3.8.0
-seaborn>=0.13.0
-plotly>=5.17.0
-jupyter>=1.0.0
-ipykernel>=6.25.0
-notebook>=7.0.0
-jupyterlab>=3.6.0
-
-# Web Development & APIs
-fastapi>=0.95.0
-uvicorn[standard]>=0.20.0
-streamlit>=1.17.0
-
-# External Data Sources
-pandas-datareader>=0.10.0
-yfinance>=0.2.10
-fredapi>=0.5.0
-
-# Utilities & Configuration
-python-dotenv>=0.19.0
-click>=8.0.0
-pyyaml>=6.0
-toml>=0.10.2
-typing-extensions>=4.0.0
-python-dateutil>=2.8.0
-
-# Development & Testing
-pytest>=7.2.0
-pytest-cov>=4.0.0
-black>=23.0.0
-flake8>=6.0.0
-isort>=5.12.0
-mypy>=1.0.0
-
-# Monitoring & Logging
-sentry-sdk>=1.15.0
-datadog>=0.44.0
-prometheus-client>=0.15.0
-
-# Excel Support
-openpyxl>=3.1.0
-xlsxwriter>=3.0.8
-
-
-# HTTP/Network
-httpx>=0.23.0
-aiohttp>=3.8.0
-
-# Time Series Analysis
-statsmodels>=0.14.0
-scikit-learn>=1.4.0
-
-
-# Database Drivers
-pymongo>=4.3.0
-
-# Caching
-diskcache>=5.4.0
-
-# Async Support
-aiofiles>=22.1.0
-
-# JSON Processing
-orjson>=3.8.0
-
-# Progress Bars
-tqdm>=4.64.0
-
-# Memory Profiling
-memory-profiler>=0.60.0
-
-# Environment Detection
-python-decouple>=3.7
-
-# Additional useful packages
-ipython>=8.0.0
-rich>=13.0.0
-typer>=0.9.0
-
-# Note: For Apache Airflow, use requirements-airflow.txt
-# Note: For dbt, install separately: uv pip install dbt-core dbt-bigquery
+# Utilities
+orjson>=3.10
+httpx>=0.27
+tqdm>=4.66

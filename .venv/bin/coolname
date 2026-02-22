@@ -1,6 +1,6 @@
 #!/Users/am/Desktop/properties_analytics/.venv/bin/python3.11
 import sys
-from slugify.__main__ import main
+from coolname.__main__ import main
 if __name__ == '__main__':
     sys.argv[0] = sys.argv[0].removesuffix('.exe')
     sys.exit(main())

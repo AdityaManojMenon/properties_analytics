@@ -1,4 +1,4 @@
-#!/Users/am/Desktop/properties_analytics/.venv/bin/python3
+#!/Users/am/Desktop/properties_analytics/.venv/bin/python3.11
 
 import sys
 import json
