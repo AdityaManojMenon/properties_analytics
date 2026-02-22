@@ -12,28 +12,54 @@ import datetime
 from google.cloud import bigquery
 
 class BigQueryPipeline:
-    def __init__(self):
-        # Pick up values from environment variables
-        self.project_id = os.environ["GOOGLE_CLOUD_PROJECT"]      
-        self.dataset_id = os.environ["BIGQUERY_DATASET"]          
-        self.table_id = os.environ["BIGQUERY_TABLE"]              
+
+    def __init__(self, project_id, dataset_id):
+        if not project_id or not dataset_id:
+            raise RuntimeError(
+                "Missing BIGQUERY configuration. "
+                "Check GOOGLE_CLOUD_PROJECT and BIGQUERY_DATASET."
+            )
+
+        self.project_id = project_id
+        self.dataset_id = dataset_id
         self.client = bigquery.Client(project=self.project_id)
 
     @classmethod
     def from_crawler(cls, crawler):
-        return cls()
+        project = os.getenv("GOOGLE_CLOUD_PROJECT")
+        dataset = os.getenv("BIGQUERY_DATASET")
+
+        return cls(project, dataset)
 
     def process_item(self, item, spider):
+
+        table_name = getattr(spider, "bq_table", None)
+
+        if not table_name:
+            raise RuntimeError(f"Spider {spider.name} missing 'bq_table' attribute.")
+
         row = dict(item)
+
+        now = datetime.datetime.utcnow()
+
         row["source"] = spider.name
 
-        row["scraped_at"] = datetime.datetime.utcnow().isoformat()
+        # BigQuery streaming expects RFC3339 string, NOT datetime object
+        row["scraped_at"] = now.isoformat() + "Z"
 
-        # Keep raw copy for debugging
-        row["raw"] = json.dumps(item)
+        # Ensure observed_at is string (some spiders may send datetime later)
+        if isinstance(row.get("observed_at"), datetime.datetime):
+            row["observed_at"] = row["observed_at"].isoformat() + "Z"
 
-        table_ref = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        # Raw payload must not contain datetime either
+        row["raw_json"] = json.dumps(row, default=str)
+
+
+        table_ref = f"{self.project_id}.{self.dataset_id}.{table_name}"
+
         errors = self.client.insert_rows_json(table_ref, [row])
+
         if errors:
             spider.logger.error(f"BigQuery insert errors: {errors}")
+
         return item
