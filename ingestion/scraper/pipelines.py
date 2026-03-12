@@ -26,8 +26,8 @@ class BigQueryPipeline:
 
     @classmethod
     def from_crawler(cls, crawler):
-        project = os.getenv("GOOGLE_CLOUD_PROJECT")
-        dataset = os.getenv("BIGQUERY_DATASET")
+        project = os.getenv("GOOGLE_CLOUD_PROJECT", "property-investment-468818")
+        dataset = os.getenv("BIGQUERY_DATASET", "scrapy_data")
 
         return cls(project, dataset)
 
