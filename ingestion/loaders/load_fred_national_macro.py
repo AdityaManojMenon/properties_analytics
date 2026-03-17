@@ -19,8 +19,6 @@ print("SUCCESS — Connected to:", client.project)
 
 SERIES = {
     "mortgage_rate": "MORTGAGE30US",
-    "housing_permits": "PERMIT",
-    "unemployment": "UNRATE",
     "inflation": "CPIAUCSL"
 }
 
@@ -66,7 +64,7 @@ def main():
     
     final_df = pd.concat(frames)
 
-    upload_table(final_df, "fred_macro")
+    upload_table(final_df, "fred_national_macro")
 
     print("Loaded FRED macro data")
 
