@@ -1,321 +1,335 @@
-# Property Analytics Project Structure
+# Housing Market Intelligence Platform
+### Macro-Driven Real Estate Analytics & ML Scoring Engine
 
-## **Objective**
-Scrape 45,000 property listings (30k sales, 15k rentals) from Property Finder and other global sources, process through a modern data stack (Airflow, dbt, BigQuery), and create comprehensive real estate analytics dashboard in Tableau.
+---
 
-## **1. Data Collection Layer**
+## Overview
 
-### **1.1 Enhanced Scrapy Spider**
+A production-grade real estate analytics warehouse that aggregates multi-source housing, macro, and demographic data across **35 U.S. metropolitan markets** into a unified feature pipeline. The platform computes a proprietary **Housing Market Leadership Index (HMLI)** — a 0–100 composite score whose weights are derived via regularized regression on 12-month forward home price appreciation, enabling data-driven market ranking and regime classification.
+
+This is not a dashboard project. It is a **feature engineering and ML scoring system** built on medallion architecture, designed to replicate the kind of quantitative market intelligence used by institutional real estate and PropTech firms.
+
+---
+
+## Architecture
+
 ```
-src/scraper/scraper/spiders/
-├── property_finder_spider.py      # Main Property Finder spider
-├── nyc_scraper.py                 # NYC real estate data
-├── london_scraper.py              # London property data
-├── base_property_spider.py        # Base class for all property spiders
-└── utils/
-    ├── proxy_manager.py           # Rotating proxy management
-    ├── rate_limiter.py            # Request throttling
-    └── data_validator.py          # Data quality validation
-```
-
-### **1.2 Proxy Management System**
-- **Rotating Proxies**: Use services like ProxyMesh, ScrapingBee, or Bright Data
-- **User-Agent Rotation**: Randomize browser headers
-- **Request Throttling**: 1-2 requests per second per domain
-- **IP Rotation**: Change IP every 100-200 requests
-
-### **1.3 Data Collection Strategy**
-- **Daily Targets**: 2k sales + 1k rentals = 3k listings/day
-- **Time Distribution**: Run 24/7 with throttling
-- **Error Handling**: Retry failed requests with exponential backoff
-- **Data Validation**: Real-time quality checks
-
-## **2. Data Storage & Processing**
-
-### **2.1 Google Cloud Architecture**
-```
-GCP Resources:
-├── Cloud Storage (GCS)
-│   ├── raw-data/               # Raw scraped data
-│   ├── processed-data/         # Transformed data
-│   └── staging/                # Temporary processing
-├── BigQuery
-│   ├── raw_property_data       # Raw tables
-│   ├── marts/                  # Business logic tables
-│   └── analytics/              # Aggregated metrics
-├── Cloud Functions             # Serverless processing
-├── Cloud Scheduler             # Cron jobs
-└── Cloud Monitoring           # Observability
-```
-
-### **2.2 Airflow DAGs Structure**
-```
-dags/
-├── property_data_ingestion.py      # Daily scraping orchestration
-├── data_quality_checks.py          # Validation and monitoring
-├── external_data_sync.py           # Market data, forex, etc.
-├── dbt_transformation.py           # Data modeling
-├── tableau_refresh.py              # Dashboard updates
-└── utils/
-    ├── gcs_operators.py            # Custom GCS operators
-    ├── bigquery_operators.py       # Custom BQ operators
-    └── notification_operators.py   # Slack/email alerts
+Raw Sources (BigQuery)
+        │
+        ▼
+┌─────────────────┐
+│   Bronze Layer  │  Ground truth. Type casting, null guards,
+│   (Views)       │  deduplication. No business logic.
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Silver Layer  │  Metro-filtered, date-standardized feature
+│   (Tables)      │  engineering. One model per domain.
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Gold Layer    │  City × month flat table. Affordability
+│   (Tables)      │  ratios, normalized features, HMLI scores,
+└────────┬────────┘  regime labels, city rankings.
+         │
+         ▼
+┌─────────────────┐
+│  ML Training    │  Python/scikit-learn. RidgeCV on panel
+│  (Python)       │  data. Walk-forward validation. Learned
+└────────┬────────┘  HMLI weights.
+         │
+         ▼
+┌─────────────────┐
+│  Next.js App    │  Mapbox choropleth, city drill-downs,
+│  (Frontend)     │  HMLI trend charts, market regime UI.
+└─────────────────┘
 ```
 
-### **2.3 dbt Models Structure**
+---
+
+## Data Sources
+
+### Current (Macro & Index Layer)
+| Source | Dataset | Grain | Coverage |
+|---|---|---|---|
+| Zillow | Home Value Index (ZHVI) | Metro × Month | 2018–2025 |
+| Zillow | Observed Rent Index (ZORI) | Metro × Month | 2018–2025 |
+| FRED | State Macro (unemployment, jobs, permits, wages) | State × Month | 2018–2025 |
+| FRED | National Macro (30Y mortgage rate, CPI) | Month | 2018–2025 |
+| Census Bureau | Population & Median Income | Metro (static) | Latest ACS |
+
+### Planned (Listing Intelligence Layer)
+| Source | Dataset | Grain | Coverage |
+|---|---|---|---|
+| Scraped (Sale) | Active listings, price cuts, DOM, removals | Listing × Day | Live + historical |
+| Scraped (Rental) | Active rentals, vacancy proxy, rent asks | Listing × Day | Live + historical |
+| Derived | Absorption rate, inventory change, listing velocity | Metro × Month | Computed from above |
+| Derived | Price cut intensity, days-on-market distribution | Metro × Month | Computed from above |
+
+---
+
+## Metro Coverage — 35 U.S. Markets
+
+Markets are segmented into four tiers based on liquidity, data depth, and market archetype:
+
+| Tier | Label | Markets |
+|---|---|---|
+| 1 | Primary | New York, Los Angeles, San Francisco, Seattle, Chicago, Boston, Washington DC, Miami, Dallas, Houston, San Diego, Minneapolis |
+| 2 | Growth | Austin, Phoenix, Atlanta, Nashville, Charlotte, Raleigh, Denver, Tampa, Orlando, Salt Lake City |
+| 3 | Secondary | Columbus, Indianapolis, Kansas City, Sacramento, San Jose, Portland, Las Vegas, Jacksonville |
+| 4 | Cyclical | Detroit, Pittsburgh, Cleveland, Memphis, Baltimore |
+
+---
+
+## Project Structure
 ```
-models/
-├── staging/
-│   ├── stg_property_sales.sql       # Cleaned sales data
-│   ├── stg_property_rentals.sql     # Cleaned rental data
-│   ├── stg_market_indicators.sql    # Economic indicators
-│   └── stg_forex_rates.sql          # Currency conversion
-├── intermediate/
-│   ├── int_property_metrics.sql     # Calculated metrics
-│   ├── int_market_analysis.sql      # Market health indicators
-│   └── int_location_aggregates.sql  # Geographic rollups
-├── marts/
-│   ├── dim_properties.sql           # Property dimension
-│   ├── dim_locations.sql            # Location dimension
-│   ├── fact_transactions.sql        # Transaction facts
-│   └── fact_market_metrics.sql      # Market metrics
-└── analytics/
-    ├── market_health_metrics.sql    # Absorption, DOM, supply
-    ├── profitability_metrics.sql    # Yields, ROI, cash flow
-    └── risk_metrics.sql             # Vacancy, P/R ratio, LTV
+properties_analytics/                   # Monorepo root
+├── dashboard/                          # Next.js frontend (Mapbox, HMLI UI)
+├── docs/                               # Architecture diagrams, methodology notes
+├── housing_analytics/                  # dbt project — medallion warehouse
+│   ├── models/
+│   │   ├── bronze/                     # Raw source staging (views)
+│   │   │   ├── bronze_zillow_home_values.sql
+│   │   │   ├── bronze_zillow_rent_index.sql
+│   │   │   ├── bronze_fred_state_macro.sql
+│   │   │   ├── bronze_fred_national_macro.sql
+│   │   │   ├── bronze_census_population.sql
+│   │   │   ├── sources.yml
+│   │   │   └── schema.yml
+│   │   ├── silver/                     # Feature engineering (tables)
+│   │   │   ├── silver_cities.sql       # Master dimension — all joins through here
+│   │   │   ├── silver_home_values.sql  # ZHVI momentum, volatility, HPA target
+│   │   │   ├── silver_rent.sql         # ZORI momentum, volatility
+│   │   │   ├── silver_macro_national.sql  # Mortgage rate shocks, CPI, regimes
+│   │   │   ├── silver_macro_state.sql  # Jobs, unemployment, permits, wages
+│   │   │   ├── silver_demographics.sql # Population, income, metro size
+│   │   │   └── schema.yml
+│   │   └── gold/                       # ML-ready scoring layer (in progress)
+│   │       └── schema.yml
+│   ├── seeds/
+│   │   └── cities.csv                  # 35-city master list with CBSA codes
+│   ├── packages.yml
+│   └── dbt_project.yml
+├── ingestion/                          # Python data loaders → BigQuery
+│   ├── detectors/                      # Data quality / anomaly detection
+│   └── loaders/                        # Source-specific ingestion scripts
+│       ├── load_census_data.py
+│       ├── load_fred_national_macro.py
+│       ├── load_fred_state_macro.py
+│       └── load_zillow_csv.py
+├── orchestration/                      # Prefect flows (in progress)
+├── scraper/                            # Scrapy listing pipeline
+│   ├── spiders/                        # City-level sale + rental spiders
+│   ├── utils/                          # Shared scraping utilities
+│   ├── items.py                        # Scrapy item schemas
+│   ├── middlewares.py                  # Rate limiting, rotation, retries
+│   ├── pipelines.py                    # BigQuery write pipeline
+│   └── settings.py                     # Scrapy configuration
+├── warehouse/                          # Shared BigQuery client utilities
+├── .env                                # Credentials (gitignored)
+├── pyproject.toml                      # Python project config
+├── requirements.txt
+└── README.md
 ```
 
-## **3. Key Metrics Implementation**
+---
 
-### **3.1 Market Health Metrics**
-```sql
--- Absorption Rate (properties sold / total inventory)
-absorption_rate = COUNT(CASE WHEN status = 'sold' THEN 1 END) / COUNT(*) * 100
+## Medallion Layer Design
 
--- Days on Market
-avg_days_on_market = AVG(DATEDIFF(sale_date, listing_date))
+### Bronze — Ground Truth
+- **Materialized as:** Views (always fresh, zero storage cost)
+- **Logic:** Type casting, `SAFE_CAST`, null filtering, column renaming only
+- **No filtering** by metro or date — full history preserved
+- **Schema:** `housing_bronze`
 
--- Months of Supply
-months_of_supply = COUNT(active_listings) / AVG(monthly_sales)
+### Silver — Feature Engineering
+- **Materialized as:** Tables
+- **Logic:** Filtered to 35 metros via `INNER JOIN` on `silver_cities` seed, date-filtered to `2018-01-01`, all dates standardized via `DATE_TRUNC(date, MONTH)`
+- **Pattern:** Every model follows `bronze → joined → base (lags) → features → final SELECT (smoothing/volatility)`
+- **Schema:** `housing_silver`
+
+Key silver models:
+
+**`silver_home_values`** — Price momentum engine
+- `zhvi_mom_pct`, `zhvi_3m_pct`, `zhvi_yoy_pct` — trailing price signals
+- `zhvi_yoy_smooth` — 3-month rolling avg YoY (noise-reduced ML feature)
+- `zhvi_volatility_6m` — 6-month rolling stddev (market stability signal)
+- `hpa_12m_forward` — **regression target only**, not a feature
+
+**`silver_rent`** — Rent momentum engine
+- `zori_mom`, `zori_yoy` — trailing rent signals
+- `zori_yoy_smooth`, `zori_mom_3m` — smoothed signals
+- `zori_volatility_6m` — rent market stability
+
+**`silver_macro_national`** — Rate & inflation engine
+- `mortgage_rate_3m_delta` — short-term rate shock (key HMLI feature)
+- `mortgage_rate_12m_delta` — regime-level rate shift
+- `mortgage_rate_volatility_6m` — rate uncertainty signal
+- `rate_regime`, `inflation_regime` — categorical labels for gold
+
+**`silver_macro_state`** — Labor & supply engine
+- `unemployment_3m_delta` — leading labor deterioration signal
+- `jobs_3m_pct`, `jobs_yoy_pct` — demand signals (3m smooths BLS revision noise)
+- `permits_yoy_pct` — supply pipeline (YoY only — cancels seasonality)
+- `wages_yoy_pct` — affordability driver
+- `labor_regime`, `supply_regime` — categorical labels for gold
+
+**`silver_demographics`** — Static census dimension
+- Joined on `msa_id = cbsa_code` (avoids brittle string matching)
+- `monthly_income`, `metro_size` — affordability and normalization inputs
+
+### Gold — Scoring Layer *(in progress)*
+- **Materialized as:** Tables
+- **Logic:** Single `city × month` flat join of all silver models + affordability ratios + normalized features + HMLI composite score (0–100) + city rank
+- **Schema:** `housing_gold`
+
+---
+
+## HMLI Methodology
+
+The Housing Market Leadership Index (HMLI) is a 0–100 composite score built in two phases:
+
+### Phase 1 — Baseline Scoring
+Manual weights applied to normalized features. Used to get the dashboard live before ML training data is sufficient.
+
+```
+Price momentum:     25%
+Rent momentum:      20%
+Jobs growth:        15%
+Wage growth:        10%
+Unemployment:       15%  (inverted — higher = worse)
+Affordability:      10%  (inverted — higher = worse)
+Mortgage shock:      5%  (inverted)
 ```
 
-### **3.2 Profitability Metrics**
-```sql
--- Gross Rental Yield
-gross_yield = (annual_rent / property_value) * 100
+### Phase 2 — Learned Weights (ML)
+Weights are derived by fitting a regularized regression (`RidgeCV`) on a panel of city-month observations using `hpa_12m_forward` as the target variable.
 
--- Net Rental Yield (after expenses)
-net_yield = ((annual_rent - annual_expenses) / property_value) * 100
+**Training setup:**
+- Features: standardized with `StandardScaler` (all features on same scale)
+- Model: `RidgeCV` with `TimeSeriesSplit` (walk-forward, no data leakage)
+- Train: 2018–2022 | Validate: 2023 | Test: 2024
+- Output: coefficients → absolute values → normalized to sum to 1 → HMLI weights
 
--- Price-to-Rent Ratio
-price_to_rent = property_value / annual_rent
-```
+**Why regularized regression:**
+- Interpretable coefficients map directly to score weights
+- Ridge handles correlated macro features (jobs and wages are correlated)
+- Stable across city panel without overfitting to specific markets
+- Weights are defensible: *"derived from historical predictive power, not manual assignment"*
 
-### **3.3 Risk Assessment**
-```sql
--- Vacancy Rate
-vacancy_rate = COUNT(vacant_units) / COUNT(total_units) * 100
+**Key leakage prevention:**
+- `hpa_12m_forward` is computed in silver but **never used as a feature** in gold
+- Train/test split is temporal, not random
+- All features at month `t` use only data known at `t`
 
--- Market Volatility
-price_volatility = STDDEV(monthly_price_change)
-```
+---
 
-## **4. Additional Data Sources Needed**
+## Setup & Running
 
-### **4.1 Economic Indicators**
-- **GDP Growth**: UAE, US, UK quarterly data
-- **Interest Rates**: Central bank rates
-- **Inflation**: CPI data for currency adjustment
-- **Employment**: Unemployment rates by city
-
-### **4.2 Market Data**
-- **Construction Permits**: New supply indicators
-- **Population Growth**: Demographic trends
-- **Tourism Data**: Short-term rental demand
-- **Infrastructure Projects**: Transport, schools, hospitals
-
-### **4.3 External APIs**
-```python
-# Economic data sources
-fred_api = "https://api.stlouisfed.org/fred/"  # US economic data
-worldbank_api = "https://api.worldbank.org/v2/"  # Global indicators
-openexchangerates_api = "https://openexchangerates.org/api/"  # Forex
-```
-
-## **5. International Expansion**
-
-### **5.1 Additional Cities to Scrape**
-- **NYC**: Zillow, StreetEasy, NYC OpenData
-- **London**: Rightmove, Zoopla, OnTheMarket
-- **Toronto**: MLS, Realtor.ca
-- **Sydney**: Domain.com.au, Realestate.com.au
-
-### **5.2 Data Harmonization**
-- **Currency Conversion**: Real-time forex rates
-- **Unit Standardization**: sqft vs sqm conversion
-- **Price Normalization**: Local currency to USD
-- **Property Type Mapping**: Standardized categories
-
-## **6. Tableau Dashboard Structure**
-
-### **6.1 Executive Dashboard**
-- **Market Overview**: Key metrics by city
-- **Trend Analysis**: Price movements over time
-- **Comparative Analysis**: City-to-city comparisons
-- **Risk Indicators**: Market health signals
-
-### **6.2 Detailed Analytics**
-- **Property Deep Dive**: Individual property analysis
-- **Location Intelligence**: Neighborhood insights
-- **Investment Analysis**: ROI calculations
-- **Market Forecasting**: Predictive models
-
-## **7. Implementation Timeline**
-
-### **Phase 1 (Weeks 1-2): Foundation**
-- ✅ Enhanced scraping infrastructure
-- ✅ Proxy management system
-- ✅ GCP setup and BigQuery schema
-- ✅ Basic Airflow DAGs
-
-### **Phase 2 (Weeks 3-4): Data Collection**
-- ✅ Property Finder scraper deployment
-- ✅ Data quality monitoring
-- ✅ Basic dbt transformations
-- ✅ Initial dashboard
-
-### **Phase 3 (Weeks 5-8): Expansion**
-- ✅ International city scrapers
-- ✅ External data integration
-- ✅ Advanced analytics
-- ✅ Final dashboard
-
-### **Phase 4 (Weeks 9-12): Optimization**
-- ✅ Performance tuning
-- ✅ Advanced modeling
-- ✅ Automation
-- ✅ Documentation
-
-## **8. Technology Stack**
-
-### **8.1 Core Technologies**
-- **Scraping**: Scrapy, Selenium, BeautifulSoup
-- **Orchestration**: Apache Airflow
-- **Data Modeling**: dbt
-- **Storage**: Google BigQuery, Cloud Storage
-- **Visualization**: Tableau
-- **Monitoring**: Great Expectations, Sentry
-
-### **8.2 Infrastructure**
-- **Cloud**: Google Cloud Platform
-- **Container**: Docker, Kubernetes
-- **CI/CD**: GitHub Actions
-- **Monitoring**: Datadog, New Relic
-
-## **9. Data Sources Assessment**
-
-### **9.1 Current Data Utilization**
-Your existing datasets are valuable for:
-- **dubai_valuation.csv**: Historical transaction data for trend analysis
-- **UAE_rental_gigasheet.csv**: Rental market baseline
-- **forex data**: Multi-currency analysis capability
-
-### **9.2 Data Gaps to Fill**
-- **Real-time listing data**: Current market inventory
-- **Detailed property features**: Amenities, condition, age
-- **Transaction history**: Complete sales cycles
-- **Neighborhood data**: Schools, transport, amenities
-
-## **10. Success Metrics**
-
-### **10.1 Data Quality KPIs**
-- **Completeness**: >95% required fields populated
-- **Accuracy**: <5% data validation errors
-- **Freshness**: Data updated within 24 hours
-- **Coverage**: Target 45k listings achieved
-
-### **10.2 Business Impact**
-- **Market Insights**: Identify emerging trends
-- **Investment Opportunities**: High-yield properties
-- **Risk Mitigation**: Early warning indicators
-- **Competitive Advantage**: Data-driven decisions
-
-This comprehensive structure provides a scalable foundation for your property analytics project with modern data engineering best practices.
-
-## 🚀 Quick Start with uv
+### Prerequisites
+- dbt 1.11+
+- BigQuery project with `housing_raw` dataset populated
+- GCP OAuth configured
 
 ### Installation
-
-1. **Install uv** (if not already installed):
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Setup the project**:
-   ```bash
-   # Create virtual environment
-   uv venv --python 3.11
-   
-   # Activate virtual environment
-   source .venv/bin/activate
-   
-   # Install all dependencies
-   uv pip install -r requirements.txt
-   
-   # Install project in development mode
-   uv pip install -e .
-   ```
-
-3. **Or use the setup script**:
-   ```bash
-   python3 setup_uv.py
-   ```
-
-### ✅ Key Benefits of Single requirements.txt
-
-- **Simple**: One file for all dependencies
-- **Fast**: uv is 10-100x faster than pip
-- **Compatible**: Works with existing Python ecosystem
-- **Complete**: Includes all packages needed for the project:
-  - Data processing (pandas, numpy)
-  - Web scraping (scrapy, selenium)
-  - Google Cloud (BigQuery, Storage)
-  - Apache Airflow (data pipelines)
-  - dbt (data transformation)
-  - Analytics (matplotlib, seaborn, plotly)
-  - Development tools (jupyter, pytest, black)
-
-### 📋 Common Commands
-
 ```bash
-# Start Jupyter Lab
-uv run jupyter lab
+# Clone the repo
+git clone https://github.com/AdityaManojMenon/housing-analytics
+cd housing_analytics
 
-# Run web scraper
-uv run scrapy crawl property_finder
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
 
-# Format code
-uv run black .
-uv run isort .
+# Install dbt and dependencies
+pip install dbt-bigquery
+dbt deps
+```
+
+### Running the Pipeline
+```bash
+# Seed city master list
+dbt seed
+
+# Run full pipeline
+dbt run --select bronze
+dbt run --select silver
+dbt run --select gold         # coming soon
 
 # Run tests
-uv run pytest
+dbt test --select bronze
+dbt test --select silver
 
-# Type checking
-uv run mypy src/
+# Run specific model
+dbt run --select silver_home_values --no-partial-parse
 ```
 
-### 🔧 Development
-
+### Checking Data Quality
 ```bash
-# Add new dependency
-uv add package-name
+# Preview any model (3 rows)
+dbt show --select silver_home_values --limit 3
 
-# Remove dependency
-uv remove package-name
-
-# Update dependencies
-uv pip install -r requirements.txt --upgrade
+# Row counts per silver model (run in BigQuery)
+SELECT 'home_values' AS model, COUNT(*) AS rows, COUNT(DISTINCT city) AS cities FROM housing_silver.silver_home_values
+UNION ALL
+SELECT 'rent',        COUNT(*), COUNT(DISTINCT city) FROM housing_silver.silver_rent
+UNION ALL
+SELECT 'macro_state', COUNT(*), COUNT(DISTINCT state) FROM housing_silver.silver_macro_state
+UNION ALL
+SELECT 'demographics',COUNT(*), COUNT(DISTINCT city) FROM housing_silver.silver_demographics
 ```
 
-## 📁 Project Structure 
+---
+
+## Key Design Decisions
+
+**Why `DATE_TRUNC(date, MONTH)` everywhere?**
+Zillow publishes on month-end dates (2024-01-31), FRED on month-start (2024-01-01). Without truncation, joins between sources produce NULLs. Truncating to month ensures all sources align on the 1st.
+
+**Why `INNER JOIN` to cities seed in silver (not bronze)?**
+Bronze preserves ground truth — all metros, all history. Filtering in silver means the city list is a single source of truth (`cities.csv`). Adding or removing a metro requires one seed change, not modifications to 5 bronze models.
+
+**Why YoY for permits and wages, but 3m for jobs?**
+Permits and wages are slow-moving or seasonally distorted — MoM is noise. YoY cancels seasonality (permits) and captures structural change (wages). Jobs are a high-frequency leading indicator that the Fed and markets watch monthly — 3m smooths BLS revision noise while preserving the signal.
+
+**Why `RidgeCV` over Lasso or tree models?**
+Ridge keeps all features with non-zero coefficients, which matters for a composite score — you want every domain (price, rent, jobs, rates) represented. Lasso can zero out entire feature groups. Trees are not interpretable as score weights.
+
+---
+
+## Roadmap
+
+### Phase 1 — Macro Foundation
+- [x] Bronze layer — 5 source models, 15 tests passing
+- [x] Silver layer — 6 feature models, 18 tests passing
+- [ ] Gold layer — flat join, affordability ratios, baseline HMLI scoring
+- [ ] ML training — RidgeCV panel regression, walk-forward validation
+- [ ] Phase 1 HMLI — macro-driven composite score, 0–100, city rankings
+
+### Phase 2 — Listing Intelligence Layer
+- [ ] Prefect orchestration — scheduled scraping pipeline, retry logic, alerting
+- [ ] Sale listing scraper — active listings, price cuts, DOM, removals per city
+- [ ] Rental listing scraper — active rentals, rent asks, vacancy proxy per city
+- [ ] bronze_listings_sale / bronze_listings_rental — raw scraped tables in BigQuery
+- [ ] silver_market_liquidity — derived metro × month metrics:
+  - Absorption rate (sales / active inventory)
+  - Days on market (median and distribution)
+  - Listing velocity (new listings MoM)
+  - Price cut intensity (% listings with reductions)
+  - Inventory change (active listings YoY)
+  - Vacancy rate proxy (rental removals / total listings)
+
+### Phase 3 — Full HMLI
+- [ ] Retrain RidgeCV with liquidity features added
+- [ ] Compare Phase 1 vs Phase 3 weights — quantify how much liquidity improves R²
+- [ ] Phase 3 HMLI — true macro + liquidity composite, validated across 35 metros
+
+### Phase 4 — Frontend
+- [ ] Next.js + Mapbox choropleth — HMLI scores by metro
+- [ ] City drill-down pages — feature breakdown, regime labels, trend charts
+- [ ] HMLI momentum view — 6-month score change, improving vs deteriorating markets
+- [ ] Monthly refresh — Prefect triggers dbt run on new data arrival
+
+---
