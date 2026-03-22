@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: housing_raw
+    database: property-investment-468818     
+    schema: housing_raw                 
+    tables:
+      - name: zillow_home_values
+      - name: zillow_rent_index
+      - name: fred_state_macro
+      - name: fred_national_macro
+      - name: census_population

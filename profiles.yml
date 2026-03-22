@@ -1,0 +1,12 @@
+housing_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: property-investment-468818
+      dataset: housing_bronze
+      keyfile: /Users/am/property-investment-bq.json
+      threads: 4
+      timeout_seconds: 300
+      location: US
