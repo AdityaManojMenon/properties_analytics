@@ -78,7 +78,7 @@ features AS (
         ROUND(unemployment_rate - prev_unemp_12, 4) AS unemployment_yoy_delta,
         -- Jobs pct change 3m 
         ROUND(SAFE_DIVIDE(nonfarm_jobs - prev_jobs_1,prev_jobs_1), 4) AS jobs_mom_pct,
-        ROUND(SAFE_DIVIDE(nonfarm_jobs - prev_jobs_3,prev_jobs_3), 4) AS jobs_3m_pct
+        ROUND(SAFE_DIVIDE(nonfarm_jobs - prev_jobs_3,prev_jobs_3), 4) AS jobs_3m_pct,
         ROUND(SAFE_DIVIDE(nonfarm_jobs - prev_jobs_12,prev_jobs_12), 4) AS jobs_yoy_pct,
         -- Permits YoY (only YoY because it mitegates short term seasonal volitility)
         ROUND(SAFE_DIVIDE(building_permits - prev_permits_12,prev_permits_12), 4) AS permits_yoy_pct,
@@ -98,7 +98,7 @@ SELECT
     unemployment_mom_delta,
     unemployment_3m_delta,
     unemployment_yoy_delta,
-    job_mom_pct,
+    jobs_mom_pct,
     jobs_yoy_pct,
     jobs_3m_pct,
     permits_yoy_pct,
@@ -111,12 +111,12 @@ SELECT
 
     -- Jobs momentum smoothed (3m rolling avg)
     ROUND(AVG(jobs_3m_pct) OVER(PARTITION BY state 
-        ORDER BY month ROW BETWEEN 2 PRECEDING AND CURRENT), 4
+        ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 4
     ) AS jobs_3m_smooth,
 
     -- Jobs volatility (stddev of 3m pct
     ROUND(STDDEV(jobs_3m_pct) OVER(PARTITION BY state 
-        ORDER BY month ROW BETWEEN 2 PRECEDING AND CURRENT), 4
+        ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 4
     ) AS jobs_volatility_6m,
 
     -- Permits volatility (6m rolling stddev — supply pipeline uncertainty)

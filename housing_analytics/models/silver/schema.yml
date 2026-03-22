@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: silver_cities
+    description: "Master city dimension. All silver models join through here."
+    columns:
+      - name: city
+        tests: [not_null, unique]
+
+  - name: silver_home_values
+    description: "Monthly ZHVI per city, 2018+. Includes hpa_12m_forward regression target."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [city, month]
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: zhvi
+        tests: [not_null]
+      - name: hpa_12m_forward
+        description: "ML regression target. NULL for last 12 months — expected."
+
+  - name: silver_rent
+    description: "Monthly ZORI per city, 2018+."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [city, month]
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: zori
+        tests: [not_null]
+
+  - name: silver_macro_national
+    description: "Monthly national macro: mortgage rate and CPI, 2018+."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [month]
+    columns:
+      - name: month
+        tests: [not_null]
+      - name: mortgage_rate
+        tests: [not_null]
+
+  - name: silver_macro_state
+    description: "Monthly state macro pivoted, filtered to 35-city states, 2018+."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [state, month]
+    columns:
+      - name: state
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+
+  - name: silver_demographics
+    description: "Static census dimension. One row per city joined on cbsa_code."
+    columns:
+      - name: city
+        tests: [not_null, unique]

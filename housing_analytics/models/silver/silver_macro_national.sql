@@ -27,7 +27,7 @@ base AS (
         LAG(mortgage_rate, 1)  OVER (ORDER BY month) AS prev_mortgage_1,
         LAG(mortgage_rate, 3) OVER (ORDER BY month) AS prev_mortgage_3,
         LAG(mortgage_rate, 12) OVER (ORDER BY month) AS prev_mortgage_12,
-        LAG(cpi, 12) (ORDER BY month) AS prev_cpi_12
+        LAG(cpi, 12) OVER (ORDER BY month) AS prev_cpi_12
     FROM pivoted
     WHERE mortgage_rate IS NOT NULL
     AND cpi IS NOT NULL
@@ -44,7 +44,7 @@ features AS(
         -- 3-month mortgage rate shock (key HMLI feature)
         ROUND(mortgage_rate - prev_mortgage_3, 4) AS mortgage_rate_3m_delta,
         -- 12-month mortgage rate delta (regime/macro-level shift signal)
-        ROUND(mortgage_rate - prev_mortgage_12, 4) AS mortgage_rate_12m_delta
+        ROUND(mortgage_rate - prev_mortgage_12, 4) AS mortgage_rate_12m_delta,
         -- CPI YoY inflation (real rent growth deflator)
         ROUND(SAFE_DIVIDE(cpi - prev_cpi_12, prev_cpi_12), 4) AS cpi_yoy_pct
     FROM base

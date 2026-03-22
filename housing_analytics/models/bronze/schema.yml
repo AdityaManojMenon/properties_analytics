@@ -2,68 +2,55 @@ version: 2
 
 models:
   - name: bronze_zillow_home_values
-    description: "Raw Zillow Home Value Index by metro and month. Ground truth, no metro filtering."
+    description: "Raw Zillow Home Value Index by metro and month."
     columns:
       - name: region_id
-        tests:
-          - not_null
+        tests: [not_null]
       - name: date
-        tests:
-          - not_null
+        tests: [not_null]
       - name: home_value_index
-        tests:
-          - not_null
+        tests: [not_null]
 
   - name: bronze_zillow_rent_index
-    description: "Raw Zillow Observed Rent Index by metro and month. Ground truth, no metro filtering."
+    description: "Raw Zillow Observed Rent Index by metro and month."
     columns:
       - name: region_id
-        tests:
-          - not_null
+        tests: [not_null]
       - name: date
-        tests:
-          - not_null
+        tests: [not_null]
       - name: rent_index
-        tests:
-          - not_null
+        tests: [not_null]
 
   - name: bronze_fred_state_macro
-    description: "Raw FRED state-level macro indicators. All states, all history preserved."
+    description: "Raw FRED state-level macro indicators."
     columns:
       - name: date
-        tests:
-          - not_null
+        tests: [not_null]
       - name: state
-        tests:
-          - not_null
+        tests: [not_null]
       - name: metric
         tests:
           - not_null
           - accepted_values:
               values: ['unemployment', 'permits', 'nonfarm_jobs', 'hourly_wages']
-            config:
               severity: warn
 
   - name: bronze_fred_national_macro
-    description: "Raw FRED national macro series. CPI and 30Y mortgage rate."
+    description: "Raw FRED national macro series."
     columns:
       - name: date
-        tests:
-          - not_null
+        tests: [not_null]
       - name: series_id
         tests:
           - not_null
           - accepted_values:
-              config:
-                severity: warn
               values: ['CPIAUCSL', 'MORTGAGE30US']
+              severity: warn
 
   - name: bronze_census_population
-    description: "Raw Census population snapshot. Static dimension, no date grain."
+    description: "Raw Census population snapshot."
     columns:
       - name: metro_raw
-        tests:
-          - not_null
+        tests: [not_null]
       - name: population
-        tests:
-          - not_null
+        tests: [not_null]

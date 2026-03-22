@@ -53,13 +53,13 @@ features AS (
         -- Quater/3M growth
         ROUND(SAFE_DIVIDE(zhvi - prev_zhvi_3,  prev_zhvi_3),  4) AS zhvi_3m_pct,
         -- YoY price change
-        ROUND(SAFE_DIVIDE(zhvi - prev_zhvi_12, prev_zhvi_12), 4) AS zhvi_yoy_ptc,
+        ROUND(SAFE_DIVIDE(zhvi - prev_zhvi_12, prev_zhvi_12), 4) AS zhvi_yoy_pct,
         -- Regression target 
         ROUND(SAFE_DIVIDE(next_zhvi_12 - zhvi, zhvi), 4) AS hpa_12m_forward
     FROM base
 )
 
--- Feature smoothing CTE using zhvi_yoy_ptc
+-- Feature smoothing CTE using zhvi_yoy_pct
 SELECT
     city,
     state,
@@ -67,10 +67,11 @@ SELECT
     month,
     zhvi,
     zhvi_mom_pct,
-    zhvi_yoy_ptc,
+    zhvi_3m_pct,
+    zhvi_yoy_pct,
     hpa_12m_forward,
     -- Smoothed YoY (3-month rolling avg — reduces noise for ML)
-    ROUND(AVG(zhvi_yoy_ptc) OVER(PARTITION BY city ORDER BY month
+    ROUND(AVG(zhvi_yoy_pct) OVER(PARTITION BY city ORDER BY month
             ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 4) 
     AS zhvi_yoy_smooth,
 
@@ -83,7 +84,6 @@ SELECT
     ROUND(STDDEV(zhvi_mom_pct) OVER(PARTITION BY city ORDER BY month
             ROWS BETWEEN 5 PRECEDING AND CURRENT ROW), 4) 
     AS zhvi_volatility_6m,
-    hpa_12m_forward
 
 FROM features
 WHERE zhvi IS NOT NULL
