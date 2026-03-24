@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: gold_market_features
+    description: "City × month flat join of all silver models. Includes affordability ratios and hpa_12m_forward target."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [city, month]
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: zhvi
+        tests: [not_null]
+      - name: price_to_income_ratio
+        description: "Affordability: years of median income to buy. Computed from zhvi / median_income."
+      - name: mortgage_to_income_ratio
+        description: "Key HMLI feature. Monthly mortgage / monthly income. Burden threshold = 0.30."

@@ -53,9 +53,7 @@ features AS (
         -- 3M Quaterly price change
         ROUND(SAFE_DIVIDE(zori - prev_zori_3, prev_zori_3), 4) AS zori_3m_pct,
         -- YoY price change
-        ROUND(SAFE_DIVIDE(zori - prev_zori_12, prev_zori_12), 4) AS zori_yoy_pct,
-        -- Regression target 
-        ROUND(SAFE_DIVIDE(next_zori_12 - zori, zori), 4) AS hpa_12m_forward
+        ROUND(SAFE_DIVIDE(zori - prev_zori_12, prev_zori_12), 4) AS zori_yoy_pct
     FROM base
 )
 
@@ -69,7 +67,6 @@ SELECT
     zori_mom_pct,
     zori_3m_pct,
     zori_yoy_pct,
-    hpa_12m_forward,
     -- Smoothed YoY (3-month rolling avg — reduces noise for ML)
     ROUND(AVG(zori_yoy_pct) OVER(PARTITION BY city ORDER BY month
             ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 4) 
@@ -83,7 +80,7 @@ SELECT
     -- Volatility (6-month rolling stddev of MoM — risk/stability signal)
     ROUND(STDDEV(zori_mom_pct) OVER(PARTITION BY city ORDER BY month
             ROWS BETWEEN 5 PRECEDING AND CURRENT ROW), 4
-        ) AS zori_volatility_6m,
+        ) AS zori_volatility_6m
 
 FROM features
 WHERE zori IS NOT NULL
