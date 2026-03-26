@@ -1,36 +1,61 @@
 city_slug,display_name,state,tier,lat,lng,zillow_name,cbsa_code
 new_york,New York,NY,1,40.7128,-74.0060,"New York, NY",35620
 los_angeles,Los Angeles,CA,1,34.0522,-118.2437,"Los Angeles, CA",31080
-san_francisco,San Francisco,CA,1,37.7749,-122.4194,"San Francisco, CA",41860
-seattle,Seattle,WA,1,47.6062,-122.3321,"Seattle, WA",42660
 chicago,Chicago,IL,1,41.8781,-87.6298,"Chicago, IL",16980
-boston,Boston,MA,1,42.3601,-71.0589,"Boston, MA",14460
-washington_dc,Washington DC,VA,1,38.9072,-77.0369,"Washington, DC",47900
-miami,Miami,FL,1,25.7617,-80.1918,"Miami, FL",33100
 dallas,Dallas,TX,1,32.7767,-96.7970,"Dallas, TX",19100
 houston,Houston,TX,1,29.7604,-95.3698,"Houston, TX",26420
-san_diego,San Diego,CA,1,32.7157,-117.1611,"San Diego, CA",41740
+washington_dc,Washington DC,DC,1,38.9072,-77.0369,"Washington, VA",47900
+miami,Miami,FL,1,25.7617,-80.1918,"Miami, FL",33100
+atlanta,Atlanta,GA,1,33.7490,-84.3880,"Atlanta, GA",12060
+phoenix,Phoenix,AZ,1,33.4484,-112.0740,"Phoenix, AZ",38060
+boston,Boston,MA,1,42.3601,-71.0589,"Boston, MA",14460
+san_francisco,San Francisco,CA,1,37.7749,-122.4194,"San Francisco, CA",41860
+seattle,Seattle,WA,1,47.6062,-122.3321,"Seattle, WA",42660
+philadelphia,Philadelphia,PA,1,39.9526,-75.1652,"Philadelphia, PA",37980
+riverside,Riverside,CA,1,33.9806,-117.3755,"Riverside, CA",40140
+detroit,Detroit,MI,1,42.3314,-83.0458,"Detroit, MI",19820
 minneapolis,Minneapolis,MN,1,44.9778,-93.2650,"Minneapolis, MN",33460
+san_diego,San Diego,CA,1,32.7157,-117.1611,"San Diego, CA",41740
+tampa,Tampa,FL,1,27.9506,-82.4572,"Tampa, FL",45300
+denver,Denver,CO,1,39.7392,-104.9903,"Denver, CO",19740
+baltimore,Baltimore,MD,1,39.2904,-76.6122,"Baltimore, MD",12580
 austin,Austin,TX,2,30.2672,-97.7431,"Austin, TX",12420
-phoenix,Phoenix,AZ,2,33.4484,-112.0740,"Phoenix, AZ",38060
-atlanta,Atlanta,GA,2,33.7490,-84.3880,"Atlanta, GA",12060
-nashville,Nashville,TN,2,36.1627,-86.7816,"Nashville, TN",34980
-charlotte,Charlotte,NC,2,35.2271,-80.8431,"Charlotte, NC",16740
-raleigh,Raleigh,NC,2,35.7796,-78.6382,"Raleigh, NC",39580
-denver,Denver,CO,2,39.7392,-104.9903,"Denver, CO",19740
-tampa,Tampa,FL,2,27.9506,-82.4572,"Tampa, FL",45300
 orlando,Orlando,FL,2,28.5383,-81.3792,"Orlando, FL",36740
-salt_lake_city,Salt Lake City,UT,2,40.7608,-111.8910,"Salt Lake City, UT",41620
-columbus,Columbus,OH,3,39.9612,-82.9988,"Columbus, OH",18140
-indianapolis,Indianapolis,IN,3,39.7684,-86.1581,"Indianapolis, IN",26900
-kansas_city,Kansas City,MO,3,39.0997,-94.5786,"Kansas City, MO",28140
-sacramento,Sacramento,CA,3,38.5816,-121.4944,"Sacramento, CA",40900
-san_jose,San Jose,CA,3,37.3382,-121.8863,"San Jose, CA",41940
-portland,Portland,OR,3,45.5051,-122.6750,"Portland, OR",38900
-las_vegas,Las Vegas,NV,3,36.1699,-115.1398,"Las Vegas, NV",29820
-jacksonville,Jacksonville,FL,3,30.3322,-81.6557,"Jacksonville, FL",27260
-detroit,Detroit,MI,4,42.3314,-83.0458,"Detroit, MI",19820
-pittsburgh,Pittsburgh,PA,4,40.4406,-79.9959,"Pittsburgh, PA",38300
-cleveland,Cleveland,OH,4,41.4993,-81.6944,"Cleveland, OH",17460
-memphis,Memphis,TN,4,35.1495,-90.0490,"Memphis, TN",32820
-baltimore,Baltimore,MD,4,39.2904,-76.6122,"Baltimore, MD",12580
+charlotte,Charlotte,NC,2,35.2271,-80.8431,"Charlotte, NC",16740
+nashville,Nashville,TN,2,36.1627,-86.7816,"Nashville, TN",34980
+san_antonio,San Antonio,TX,2,29.4241,-98.4936,"San Antonio, TX",41700
+sacramento,Sacramento,CA,2,38.5816,-121.4944,"Sacramento, CA",40900
+portland,Portland,OR,2,45.5152,-122.6784,"Portland, OR",38900
+st_louis,St. Louis,MO,2,38.6270,-90.1994,"St. Louis, MO",41180
+pittsburgh,Pittsburgh,PA,2,40.4406,-79.9959,"Pittsburgh, PA",38300
+las_vegas,Las Vegas,NV,2,36.1699,-115.1398,"Las Vegas, NV",29820
+cincinnati,Cincinnati,OH,2,39.1031,-84.5120,"Cincinnati, OH",17140
+kansas_city,Kansas City,MO,2,39.0997,-94.5786,"Kansas City, MO",28140
+columbus,Columbus,OH,2,39.9612,-82.9988,"Columbus, OH",18140
+indianapolis,Indianapolis,IN,2,39.7684,-86.1581,"Indianapolis, IN",26900
+cleveland,Cleveland,OH,2,41.4993,-81.6944,"Cleveland, OH",17460
+san_jose,San Jose,CA,2,37.3382,-121.8863,"San Jose, CA",41940
+virginia_beach,Virginia Beach,VA,2,36.8529,-75.9780,"Virginia Beach, VA",47260
+jacksonville,Jacksonville,FL,2,30.3322,-81.6557,"Jacksonville, FL",27260
+providence,Providence,RI,2,41.8240,-71.4128,"Providence, RI",39300
+milwaukee,Milwaukee,WI,2,43.0389,-87.9065,"Milwaukee, WI",33340
+raleigh,Raleigh,NC,3,35.7796,-78.6382,"Raleigh, NC",39580
+richmond,Richmond,VA,3,37.5407,-77.4360,"Richmond, VA",40060
+salt_lake_city,Salt Lake City,UT,3,40.7608,-111.8910,"Salt Lake City, UT",41620
+memphis,Memphis,TN,3,35.1495,-90.0490,"Memphis, TN",32820
+louisville,Louisville,KY,3,38.2527,-85.7585,"Louisville, KY",31140
+oklahoma_city,Oklahoma City,OK,3,35.4676,-97.5164,"Oklahoma City, OK",36420
+new_orleans,New Orleans,LA,3,29.9511,-90.0715,"New Orleans, LA",35380
+buffalo,Buffalo,NY,3,42.8864,-78.8784,"Buffalo, NY",15380
+hartford,Hartford,CT,3,41.7658,-72.6734,"Hartford, CT",25540
+birmingham,Birmingham,AL,3,33.5186,-86.8104,"Birmingham, AL",13820
+rochester,Rochester,NY,3,43.1566,-77.6088,"Rochester, NY",40380
+tucson,Tucson,AZ,3,32.2226,-110.9747,"Tucson, AZ",46060
+fresno,Fresno,CA,3,36.7378,-119.7871,"Fresno, CA",23420
+grand_rapids,Grand Rapids,MI,3,42.9634,-85.6681,"Grand Rapids, MI",24340
+omaha,Omaha,NE,3,41.2565,-95.9345,"Omaha, NE",36540
+albuquerque,Albuquerque,NM,3,35.0844,-106.6504,"Albuquerque, NM",10740
+el_paso,El Paso,TX,3,31.7619,-106.4850,"El Paso, TX",21340
+mcallen,McAllen,TX,3,26.2034,-98.2300,"McAllen, TX",32580
+tulsa,Tulsa,OK,3,36.1540,-95.9928,"Tulsa, OK",46140
+knoxville,Knoxville,TN,3,35.9606,-83.9207,"Knoxville, TN",28940

@@ -10,3 +10,4 @@ sources:
       - name: fred_state_macro
       - name: fred_national_macro
       - name: census_population
+      - name: property_cost_rates

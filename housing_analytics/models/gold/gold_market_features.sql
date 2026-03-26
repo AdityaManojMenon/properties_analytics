@@ -23,7 +23,9 @@ home_values AS (
         zhvi_yoy_smooth,
         zhvi_mom_3m,
         zhvi_volatility_6m,
-        hpa_12m_forward 
+        hpa_12m_forward,
+        national_hpa,
+        hpa_relative
     FROM {{ ref('silver_home_values') }}
 ),
 
@@ -88,6 +90,21 @@ demographics AS (
     FROM {{ ref('silver_demographics') }}
 ),
 
+property_costs AS (
+    SELECT
+        city,
+        month,
+        effective_tax_rate,
+        insurance_rate,
+        total_ancillary_rate,
+        tax_regime,
+        insurance_risk_tier,
+        climate_risk_tier,
+        tax_rate_yoy_delta,
+        insurance_rate_yoy_delta
+    FROM {{ ref('silver_property_costs') }}   
+),
+
 -- Core join: city × month spine from home_values 
 -- Everything joins to this
 
@@ -113,13 +130,15 @@ joined AS (
         hv.zhvi_mom_3m,
         hv.zhvi_volatility_6m,
         hv.hpa_12m_forward,
+        hv.national_hpa,
+        hv.hpa_relative,
 
         -- rent features
         r.zori,
         r.zori_mom_pct,
         r.zori_yoy_pct,
         r.zori_yoy_smooth,
-        zori_mom_3m,
+        r.zori_mom_3m,
         r.zori_volatility_6m,
 
         -- national macro (same for all cities in same month)
@@ -154,19 +173,33 @@ joined AS (
         d.population,
         d.median_income,
         d.monthly_income,
-        d.metro_size
+        d.metro_size,
+
+        -- property costs
+        p.effective_tax_rate,
+        p.insurance_rate,
+        p.total_ancillary_rate,
+        p.tax_regime,
+        p.insurance_risk_tier,
+        p.tax_rate_yoy_delta,
+        p.insurance_rate_yoy_delta
 
         FROM home_values hv
-        INNER JOIN cities c 
-        ON hv.city = c.city 
-        LEFT JOIN rent r 
-        ON hv.city = r.city AND hv.month = r.month
+        INNER JOIN cities c
+        ON hv.city = c.city
+        LEFT JOIN rent r
+        ON hv.city = r.city
+        AND hv.month = r.month
         LEFT JOIN macro_national n
-        ON hv.month = n.month 
-        LEFT JOIN macro_state s 
-        ON c.state = s.state AND hv.month = s.month
-        LEFT JOIN demographics d 
+        ON hv.month = n.month
+        LEFT JOIN macro_state s
+        ON c.state = s.state
+        AND hv.month = s.month
+        LEFT JOIN demographics d
         ON hv.city = d.city
+        LEFT JOIN property_costs p
+        ON hv.city = p.city
+        AND hv.month = p.month
 ),
 
 -- Affordability ratios using zhvi + zori + income
@@ -174,36 +207,117 @@ joined AS (
 affordability_ratios AS (
     SELECT
         *,
-        -- Price-to-income ratio (how many years of income to buy)
+
         ROUND(SAFE_DIVIDE(zhvi, median_income), 2) AS price_to_income_ratio,
 
-        -- Monthly mortgage payment estimate (30Y fixed, 20% down)
-        -- Payment = P * [r(1+r)^n] / [(1+r)^n - 1] (P: Principal, r: mortgage rate, n number of payments -> 12 per year * 30 year)
-        ROUND(SAFE_DIVIDE(
-            (zhvi * 0.8) * (mortgage_rate/1200) * POWER(1 + (mortgage_rate/1200), 360),
-            POWER(1 + (mortgage_rate/1200), 360) - 1), 2) AS monthly_mortgage_payment,
+        ROUND(
+            SAFE_DIVIDE(
+                (zhvi * 0.8) * (mortgage_rate / 1200) * POWER(1 + (mortgage_rate / 1200), 360),
+                POWER(1 + (mortgage_rate / 1200), 360) - 1
+            ),
+            2
+        ) AS monthly_mortgage_payment,
 
-        -- Mortgage-to-income ratio (monthly payment as % of monthly income)
-        -- Above 0.30 = cost-burdened threshold
+        ROUND((zhvi * effective_tax_rate) / 12, 2) AS monthly_property_tax,
+
+        ROUND((zhvi * insurance_rate) / 12, 2) AS monthly_insurance,
+
+        ROUND(
+            SAFE_DIVIDE(
+                (zhvi * 0.8) * (mortgage_rate / 1200) * POWER(1 + (mortgage_rate / 1200), 360),
+                POWER(1 + (mortgage_rate / 1200), 360) - 1
+            )
+            + ((zhvi * effective_tax_rate) / 12)
+            + ((zhvi * insurance_rate) / 12),
+            2
+        ) AS monthly_piti,
+
         ROUND(
             SAFE_DIVIDE(
                 (zhvi * 0.8) *
                 SAFE_DIVIDE(
+                    (mortgage_rate / 1200) * POWER(1 + (mortgage_rate / 1200), 360),
+                    POWER(1 + (mortgage_rate / 1200), 360) - 1
+                ),
+                monthly_income
+            ),
+            4
+        ) AS mortgage_to_income_ratio,
+
+        ROUND(
+            SAFE_DIVIDE(
+                SAFE_DIVIDE(
+                    (zhvi * 0.8) *
                     (mortgage_rate / 1200) *
                     POWER(1 + (mortgage_rate / 1200), 360),
                     POWER(1 + (mortgage_rate / 1200), 360) - 1
-                ),  monthly_income
-                ), 4 
-            ) AS mortgage_to_income_ratio,
+                )
+                + ((zhvi * effective_tax_rate) / 12)
+                + ((zhvi * insurance_rate) / 12),
+                monthly_income
+            ),
+            4
+        ) AS piti_to_income_ratio,
 
-        -- Rent-to-income ratio (monthly rent as % of monthly income)
-        -- Above 0.30 = rent-burdened threshold
         ROUND(SAFE_DIVIDE(zori, monthly_income), 4) AS rent_to_income_ratio,
 
-        -- Price-to-rent ratio (buy vs rent signal)
-        -- Above 20 = renting cheaper, below 15 = buying cheaper
-        ROUND(SAFE_DIVIDE(zhvi, zori * 12), 2)
-            AS price_to_rent_ratio
+        ROUND(SAFE_DIVIDE(zhvi, zori * 12), 2) AS price_to_rent_ratio,
+
+        ROUND(
+            SAFE_DIVIDE(
+                SAFE_DIVIDE(
+                    (zhvi * 0.8) *
+                    (mortgage_rate / 1200) *
+                    POWER(1 + (mortgage_rate / 1200), 360),
+                    POWER(1 + (mortgage_rate / 1200), 360) - 1
+                )
+                + ((zhvi * effective_tax_rate) / 12)
+                + ((zhvi * insurance_rate) / 12),
+                monthly_income
+            ) * mortgage_rate,
+            6
+        ) AS piti_rate_pressure,
+
+        ROUND(
+            SAFE_DIVIDE(
+                SAFE_DIVIDE(
+                    (zhvi * 0.8) *
+                    (mortgage_rate / 1200) *
+                    POWER(1 + (mortgage_rate / 1200), 360),
+                    POWER(1 + (mortgage_rate / 1200), 360) - 1
+                )
+                + ((zhvi * effective_tax_rate) / 12)
+                + ((zhvi * insurance_rate) / 12),
+                monthly_income
+            ) * mortgage_rate_12m_delta,
+            6
+        ) AS piti_shock,
+
+        CASE
+            WHEN SAFE_DIVIDE(
+                SAFE_DIVIDE(
+                    (zhvi * 0.8) *
+                    (mortgage_rate / 1200) *
+                    POWER(1 + (mortgage_rate / 1200), 360),
+                    POWER(1 + (mortgage_rate / 1200), 360) - 1
+                )
+                + ((zhvi * effective_tax_rate) / 12)
+                + ((zhvi * insurance_rate) / 12),
+                monthly_income
+            ) >= 0.43 THEN 'severely_burdened'
+            WHEN SAFE_DIVIDE(
+                SAFE_DIVIDE(
+                    (zhvi * 0.8) *
+                    (mortgage_rate / 1200) *
+                    POWER(1 + (mortgage_rate / 1200), 360),
+                    POWER(1 + (mortgage_rate / 1200), 360) - 1
+                )
+                + ((zhvi * effective_tax_rate) / 12)
+                + ((zhvi * insurance_rate) / 12),
+                monthly_income
+            ) >= 0.30 THEN 'cost_burdened'
+            ELSE 'affordable'
+        END AS affordability_class
 
     FROM joined
 )

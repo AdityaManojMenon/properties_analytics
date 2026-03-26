@@ -54,3 +54,15 @@ models:
         tests: [not_null]
       - name: population
         tests: [not_null]
+        
+  - name: bronze_property_costs
+    description: "Annual property tax and insurance rates by city × year. Time-series grain."
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: year
+        tests: [not_null]
+      - name: effective_tax_rate
+        tests: [not_null]
+      - name: insurance_rate
+        tests: [not_null]

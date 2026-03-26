@@ -62,3 +62,18 @@ models:
     columns:
       - name: city
         tests: [not_null, unique]
+  
+  - name: silver_property_costs
+    description: "Monthly property tax and insurance rates per city. Annual rates forward-filled to monthly grain."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [city, month]
+    columns:
+      - name: city
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: effective_tax_rate
+        tests: [not_null]
+      - name: insurance_rate
+        tests: [not_null]

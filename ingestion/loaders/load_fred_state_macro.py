@@ -174,6 +174,60 @@ STATE_FRED_CODES = {
         "nonfarm_jobs":  ("MNNA",      "monthly", True),
         "hourly_wages":  ("SMU27000000500000003", "monthly", True),
     },
+    "RI": {
+    "unemployment":  ("RIUR",      "monthly", True),
+    "permits":       ("RIBPPRIV",  "monthly", False),
+    "nonfarm_jobs":  ("RINA",      "monthly", True),
+    "hourly_wages":  ("SMU44000000500000003", "monthly", True),
+    },
+    "WI": {
+        "unemployment":  ("WIUR",      "monthly", True),
+        "permits":       ("WIBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("WINA",      "monthly", True),
+        "hourly_wages":  ("SMU55000000500000003", "monthly", True),
+    },
+    "KY": {
+        "unemployment":  ("KYUR",      "monthly", True),
+        "permits":       ("KYBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("KYNA",      "monthly", True),
+        "hourly_wages":  ("SMU21000000500000003", "monthly", True),
+    },
+    "OK": {
+        "unemployment":  ("OKUR",      "monthly", True),
+        "permits":       ("OKBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("OKNA",      "monthly", True),
+        "hourly_wages":  ("SMU40000000500000003", "monthly", True),
+    },
+    "LA": {
+        "unemployment":  ("LAUR",      "monthly", True),
+        "permits":       ("LABPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("LANA",      "monthly", True),
+        "hourly_wages":  ("SMU22000000500000003", "monthly", True),
+    },
+    "CT": {
+        "unemployment":  ("CTUR",      "monthly", True),
+        "permits":       ("CTBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("CTNA",      "monthly", True),
+        "hourly_wages":  ("SMU09000000500000003", "monthly", True),
+    },
+    "AL": {
+        "unemployment":  ("ALUR",      "monthly", True),
+        "permits":       ("ALBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("ALNA",      "monthly", True),
+        "hourly_wages":  ("SMU01000000500000003", "monthly", True),
+    },
+    "NE": {
+        "unemployment":  ("NEUR",      "monthly", True),
+        "permits":       ("NEBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("NENA",      "monthly", True),
+        "hourly_wages":  ("SMU31000000500000003", "monthly", True),
+    },
+    "NM": {
+        "unemployment":  ("NMUR",      "monthly", True),
+        "permits":       ("NMBPPRIV",  "monthly", False),
+        "nonfarm_jobs":  ("NMNA",      "monthly", True),
+        "hourly_wages":  ("SMU35000000500000003", "monthly", True),
+    },
 }
 
 # City → state mapping for dbt joins
@@ -215,6 +269,32 @@ CITY_STATE = {
     "cleveland":      "OH",
     "memphis":        "TN",
     "baltimore":      "MD",
+    "philadelphia":   "PA",
+    "riverside":      "CA",
+    "san_antonio":    "TX",
+    "st_louis":       "MO",
+    "cincinnati":     "OH",
+    "virginia_beach": "VA",
+    "jacksonville":   "FL",  
+    "providence":     "RI",
+    "milwaukee":      "WI",
+    "richmond":       "VA",
+    "louisville":     "KY",
+    "oklahoma_city":  "OK",
+    "new_orleans":    "LA",
+    "buffalo":        "NY",
+    "hartford":       "CT",
+    "birmingham":     "AL",
+    "rochester":      "NY",
+    "tucson":         "AZ",
+    "fresno":         "CA",
+    "grand_rapids":   "MI",
+    "omaha":          "NE",
+    "albuquerque":    "NM",
+    "el_paso":        "TX",
+    "mcallen":        "TX",
+    "tulsa":          "OK",
+    "knoxville":      "TN",
 }
 
 
@@ -281,12 +361,17 @@ def main():
         return
 
     final_df = pd.concat(frames, ignore_index=True)
+    latest = (
+    final_df.groupby(["state", "metric"], as_index=False)["date"]
+    .max()
+    .sort_values(["metric", "state"]))
+    print(latest.to_string(index=False))
 
     print(f"\nTotal rows: {len(final_df)}")
     print(f"States: {final_df['state'].nunique()}")
     print(f"Metrics: {final_df['metric'].unique()}")
     print(f"Date range: {final_df['date'].min()} → {final_df['date'].max()}")
-    print(final_df.head(10))
+    print(final_df.tail(20))
 
     upload_table(final_df, "fred_state_macro")
     print("Loaded FRED macro data")

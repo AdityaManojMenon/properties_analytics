@@ -17,3 +17,89 @@ models:
         description: "Affordability: years of median income to buy. Computed from zhvi / median_income."
       - name: mortgage_to_income_ratio
         description: "Key HMLI feature. Monthly mortgage / monthly income. Burden threshold = 0.30."
+
+  - name: gold_hmli_scores
+    description: "City × month HMLI scoring model built from gold_market_features. Produces normalized feature scores, bucket scores, and final hybrid HMLI score."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [city, month]
+    columns:
+      - name: city
+        tests: [not_null]
+
+      - name: month
+        tests: [not_null]
+
+      - name: housing_momentum_score
+        description: "0 to 1 bucket score based on price growth momentum and lower price volatility."
+
+      - name: rent_strength_score
+        description: "0 to 1 bucket score based on rent growth momentum and lower rent volatility."
+
+      - name: labor_score
+        description: "0 to 1 bucket score based on lower unemployment, lower unemployment deterioration, and stronger job growth."
+
+      - name: labor_supply_score
+        description: "0 to 1 score based on permits growth. Currently higher permits are treated as supportive of market health."
+
+      - name: macro_rates_score
+        description: "0 to 1 bucket score based on lower mortgage shocks, lower rate volatility, and lower inflation pressure."
+
+      - name: affordability_score
+        description: "0 to 1 bucket score based on lower affordability stretch and lower payment shock."
+
+      - name: hmli_score
+        description: "Final hybrid HMLI score on a 0 to 1 scale using ML-informed bucket weights and economic sign logic."
+        tests:
+          - not_null
+
+      - name: zhvi_yoy_smooth_score
+        description: "Monthly cross-sectional percentile score for zhvi_yoy_smooth, where higher is better."
+
+      - name: zhvi_mom_3m_score
+        description: "Monthly cross-sectional percentile score for zhvi_mom_3m, where higher is better."
+
+      - name: zhvi_volatility_6m_score
+        description: "Monthly cross-sectional percentile score for zhvi_volatility_6m, where lower is better."
+
+      - name: zori_yoy_smooth_score
+        description: "Monthly cross-sectional percentile score for zori_yoy_smooth, where higher is better."
+
+      - name: zori_mom_3m_score
+        description: "Monthly cross-sectional percentile score for zori_mom_3m, where higher is better."
+
+      - name: zori_volatility_6m_score
+        description: "Monthly cross-sectional percentile score for zori_volatility_6m, where lower is better."
+
+      - name: unemployment_rate_score
+        description: "Monthly cross-sectional percentile score for unemployment_rate, where lower is better."
+
+      - name: unemployment_3m_delta_score
+        description: "Monthly cross-sectional percentile score for unemployment_3m_delta, where lower is better."
+
+      - name: jobs_yoy_pct_score
+        description: "Monthly cross-sectional percentile score for jobs_yoy_pct, where higher is better."
+
+      - name: permits_yoy_pct_score
+        description: "Monthly cross-sectional percentile score for permits_yoy_pct."
+
+      - name: mortgage_rate_3m_delta_score
+        description: "Monthly cross-sectional percentile score for mortgage_rate_3m_delta, where lower is better."
+
+      - name: mortgage_rate_volatility_6m_score
+        description: "Monthly cross-sectional percentile score for mortgage_rate_volatility_6m, where lower is better."
+
+      - name: cpi_yoy_pct_score
+        description: "Monthly cross-sectional percentile score for cpi_yoy_pct, where lower is better."
+
+      - name: price_to_income_ratio_score
+        description: "Monthly cross-sectional percentile score for price_to_income_ratio, where lower is better."
+
+      - name: piti_rate_pressure_score
+        description: "Monthly cross-sectional percentile score for piti_rate_pressure, where lower is better."
+
+      - name: rent_to_income_ratio_score
+        description: "Monthly cross-sectional percentile score for rent_to_income_ratio, where lower is better."
+
+      - name: piti_shock_score
+        description: "Monthly cross-sectional percentile score for piti_shock, where lower is better."

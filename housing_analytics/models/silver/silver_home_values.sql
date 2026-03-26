@@ -57,33 +57,52 @@ features AS (
         -- Regression target 
         ROUND(SAFE_DIVIDE(next_zhvi_12 - zhvi, zhvi), 4) AS hpa_12m_forward
     FROM base
+),
+
+national_hpa AS (
+    SELECT
+        month,
+        AVG(hpa_12m_forward) AS national_hpa
+    FROM features
+    WHERE hpa_12m_forward IS NOT NULL
+    GROUP BY month
 )
 
--- Feature smoothing CTE using zhvi_yoy_pct
 SELECT
-    city,
-    state,
-    tier,
-    month,
-    zhvi,
-    zhvi_mom_pct,
-    zhvi_3m_pct,
-    zhvi_yoy_pct,
-    hpa_12m_forward,
-    -- Smoothed YoY (3-month rolling avg — reduces noise for ML)
-    ROUND(AVG(zhvi_yoy_pct) OVER(PARTITION BY city ORDER BY month
-            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 4) 
-    AS zhvi_yoy_smooth,
+    f.city,
+    f.state,
+    f.tier,
+    f.month,
+    f.zhvi,
+    f.zhvi_mom_pct,
+    f.zhvi_3m_pct,
+    f.zhvi_yoy_pct,
+    f.hpa_12m_forward,
+    n.national_hpa,
+    ROUND(f.hpa_12m_forward - n.national_hpa, 6) AS hpa_relative,
 
-    -- Smoothed MoM (3-month rolling avg — better trend signal than raw MoM)
-    ROUND(AVG(zhvi_mom_pct) OVER(PARTITION BY city ORDER BY month
-            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 4) 
-    AS zhvi_mom_3m,
+    ROUND(
+        AVG(f.zhvi_yoy_pct) OVER (
+            PARTITION BY f.city ORDER BY f.month
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ), 4
+    ) AS zhvi_yoy_smooth,
 
-    -- Volatility (6-month rolling stddev of MoM — risk/stability signal)
-    ROUND(STDDEV(zhvi_mom_pct) OVER(PARTITION BY city ORDER BY month
-            ROWS BETWEEN 5 PRECEDING AND CURRENT ROW), 4) 
-    AS zhvi_volatility_6m,
+    ROUND(
+        AVG(f.zhvi_mom_pct) OVER (
+            PARTITION BY f.city ORDER BY f.month
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ), 4
+    ) AS zhvi_mom_3m,
 
-FROM features
-WHERE zhvi IS NOT NULL
+    ROUND(
+        STDDEV(f.zhvi_mom_pct) OVER (
+            PARTITION BY f.city ORDER BY f.month
+            ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
+        ), 4
+    ) AS zhvi_volatility_6m
+
+FROM features f
+LEFT JOIN national_hpa n
+    ON f.month = n.month
+WHERE f.zhvi IS NOT NULL
