@@ -1,8 +1,15 @@
 version: 2
 
 models:
+
   - name: gold_market_features
-    description: "City × month flat join of all silver models. Includes affordability ratios and hpa_12m_forward target."
+    description: >
+      City × month flat join of all silver models.
+      Spine is silver_home_values (city × month).
+      Includes all raw features, affordability ratios, PITI components,
+      interaction features, regime labels, and ML target variables.
+      hpa_12m_forward and hpa_relative are the regression targets —
+      never use as features.
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: [city, month]
@@ -13,93 +20,304 @@ models:
         tests: [not_null]
       - name: zhvi
         tests: [not_null]
+      - name: zori
+        description: "Zillow Observed Rent Index. LEFT JOIN — may be null for cities with thin rental data."
+      - name: mortgage_rate
+        tests: [not_null]
+      - name: unemployment_rate
+        tests: [not_null]
       - name: price_to_income_ratio
-        description: "Affordability: years of median income to buy. Computed from zhvi / median_income."
+        description: "Ownership affordability: years of median income to buy at current ZHVI."
+      - name: piti_to_income_ratio
+        description: >
+          Full housing cost burden: monthly PITI / monthly income.
+          More accurate than mortgage-only ratio.
+          Includes time-varying property tax and insurance rates.
+          Display metric only — not used as ML feature (high VIF=19.99 vs price_to_income VIF=13.66).
       - name: mortgage_to_income_ratio
-        description: "Key HMLI feature. Monthly mortgage / monthly income. Burden threshold = 0.30."
+        description: "Monthly mortgage (PI only) / monthly income. Kept for backward compatibility."
+      - name: piti_rate_pressure
+        description: >
+          Interaction feature: piti_to_income × mortgage_rate.
+          Captures rate-amplified affordability stress.
+          High PITI at high rates = trapped buyer market.
+          MI=0.535 — 4th strongest feature in ML model.
+      - name: piti_shock
+        description: >
+          Interaction feature: piti_to_income × mortgage_rate_12m_delta.
+          Captures differential impact of rate shocks by affordability level.
+          High PITI + rising rates = severe demand destruction.
+          MI=0.371.
+      - name: hpa_12m_forward
+        description: >
+          12-month forward home price appreciation.
+          REGRESSION TARGET ONLY — never use as input feature.
+          Will be NULL for the most recent 12 months (no future data yet).
+          Computed as: (zhvi_t+12 - zhvi_t) / zhvi_t.
+      - name: national_hpa
+        description: >
+          Cross-sectional mean hpa_12m_forward across all cities for that month.
+          Used to compute hpa_relative. NULL for last 12 months.
+      - name: hpa_relative
+        description: >
+          City HPA minus national mean HPA for that month.
+          PRIMARY ML TRAINING TARGET — eliminates national regime bias.
+          Model learns which cities outperform regardless of macro direction.
+          NULL for last 12 months.
 
   - name: gold_hmli_scores
-    description: "City × month HMLI scoring model built from gold_market_features. Produces normalized feature scores, bucket scores, and final hybrid HMLI score."
+    description: >
+      City × month HMLI scoring table.
+      Architecture: raw features → cross-sectional percentile scores →
+      domain bucket scores → final weighted HMLI score (0–1 scale).
+      Percentile ranking partitioned by month eliminates distribution shift
+      between COVID boom (2020–2022) and post-rate-shock (2023–2024) periods.
+      Weights derived from RidgeCV on hpa_relative panel regression.
+      macro_rates_score is computed but excluded from hmli_score because
+      national macro (mortgage rate, CPI) is identical across all cities
+      in a given month — PERCENT_RANK() produces no cross-sectional signal.
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: [city, month]
     columns:
       - name: city
         tests: [not_null]
-
       - name: month
         tests: [not_null]
-
-      - name: housing_momentum_score
-        description: "0 to 1 bucket score based on price growth momentum and lower price volatility."
-
-      - name: rent_strength_score
-        description: "0 to 1 bucket score based on rent growth momentum and lower rent volatility."
-
-      - name: labor_score
-        description: "0 to 1 bucket score based on lower unemployment, lower unemployment deterioration, and stronger job growth."
-
-      - name: labor_supply_score
-        description: "0 to 1 score based on permits growth. Currently higher permits are treated as supportive of market health."
-
-      - name: macro_rates_score
-        description: "0 to 1 bucket score based on lower mortgage shocks, lower rate volatility, and lower inflation pressure."
-
-      - name: affordability_score
-        description: "0 to 1 bucket score based on lower affordability stretch and lower payment shock."
-
       - name: hmli_score
-        description: "Final hybrid HMLI score on a 0 to 1 scale using ML-informed bucket weights and economic sign logic."
-        tests:
-          - not_null
-
+        description: >
+          Final HMLI score on 0–1 scale.
+          Weighted composite: rent_strength (42.4%) + housing_momentum (33.8%) +
+          affordability (14.8%) + labor (8.0%) + labor_supply (1.1%).
+          Higher = stronger market health.
+        tests: [not_null]
+      - name: housing_momentum_score
+        description: >
+          0–1 bucket score. Average of cross-sectional percentiles for:
+          zhvi_yoy_smooth (higher=better), zhvi_mom_3m (higher=better),
+          zhvi_volatility_6m (lower=better, inverted).
+          Weight: 33.8% of HMLI.
+      - name: rent_strength_score
+        description: >
+          0–1 bucket score. Average of cross-sectional percentiles for:
+          zori_yoy_smooth (higher=better), zori_mom_3m (higher=better),
+          zori_volatility_6m (lower=better, inverted).
+          Weight: 42.4% of HMLI — strongest predictor of relative HPA.
+      - name: labor_score
+        description: >
+          0–1 bucket score. Average of cross-sectional percentiles for:
+          unemployment_rate (lower=better, inverted),
+          unemployment_3m_delta (lower=better, inverted),
+          jobs_yoy_pct (higher=better).
+          Weight: 8.0% of HMLI.
+      - name: labor_supply_score
+        description: >
+          0–1 score from permits_yoy_pct percentile rank.
+          Higher permits = stronger supply pipeline.
+          Weight: 1.1% of HMLI.
+          Note: permits is a leading indicator for future supply pressure —
+          interpret directionally rather than as a pure bullish signal.
+      - name: macro_rates_score
+        description: >
+          0–1 bucket score. Average of percentiles for:
+          mortgage_rate_3m_delta (lower=better), mortgage_rate_volatility_6m
+          (lower=better), cpi_yoy_pct (lower=better).
+          Excluded from hmli_score: national macro is identical for all cities
+          in a given month so cross-sectional ranking adds no signal.
+          Included for dashboard context and regime labeling only.
+      - name: affordability_score
+        description: >
+          0–1 bucket score. Average of cross-sectional percentiles for:
+          price_to_income_ratio (lower=better, inverted),
+          piti_rate_pressure (lower=better, inverted),
+          rent_to_income_ratio (lower=better, inverted),
+          piti_shock (lower=better, inverted).
+          Weight: 14.8% of HMLI.
       - name: zhvi_yoy_smooth_score
-        description: "Monthly cross-sectional percentile score for zhvi_yoy_smooth, where higher is better."
-
+        description: "Cross-sectional percentile of smoothed YoY home value growth. Higher = better."
       - name: zhvi_mom_3m_score
-        description: "Monthly cross-sectional percentile score for zhvi_mom_3m, where higher is better."
-
+        description: "Cross-sectional percentile of 3-month home value momentum. Higher = better."
       - name: zhvi_volatility_6m_score
-        description: "Monthly cross-sectional percentile score for zhvi_volatility_6m, where lower is better."
-
+        description: "Cross-sectional percentile of price volatility, inverted. Higher = less volatile = better."
       - name: zori_yoy_smooth_score
-        description: "Monthly cross-sectional percentile score for zori_yoy_smooth, where higher is better."
-
+        description: "Cross-sectional percentile of smoothed YoY rent growth. Higher = better."
       - name: zori_mom_3m_score
-        description: "Monthly cross-sectional percentile score for zori_mom_3m, where higher is better."
-
+        description: "Cross-sectional percentile of 3-month rent momentum. Higher = better."
       - name: zori_volatility_6m_score
-        description: "Monthly cross-sectional percentile score for zori_volatility_6m, where lower is better."
-
+        description: "Cross-sectional percentile of rent volatility, inverted. Higher = less volatile = better."
       - name: unemployment_rate_score
-        description: "Monthly cross-sectional percentile score for unemployment_rate, where lower is better."
-
+        description: "Cross-sectional percentile of unemployment rate, inverted. Higher = lower unemployment = better."
       - name: unemployment_3m_delta_score
-        description: "Monthly cross-sectional percentile score for unemployment_3m_delta, where lower is better."
-
+        description: "Cross-sectional percentile of 3m unemployment change, inverted. Higher = improving labor = better."
       - name: jobs_yoy_pct_score
-        description: "Monthly cross-sectional percentile score for jobs_yoy_pct, where higher is better."
-
+        description: "Cross-sectional percentile of YoY job growth. Higher = better."
       - name: permits_yoy_pct_score
-        description: "Monthly cross-sectional percentile score for permits_yoy_pct."
-
+        description: "Cross-sectional percentile of YoY permits growth."
       - name: mortgage_rate_3m_delta_score
-        description: "Monthly cross-sectional percentile score for mortgage_rate_3m_delta, where lower is better."
-
+        description: "Cross-sectional percentile of 3m rate change, inverted. Contextual only — national variable."
       - name: mortgage_rate_volatility_6m_score
-        description: "Monthly cross-sectional percentile score for mortgage_rate_volatility_6m, where lower is better."
-
+        description: "Cross-sectional percentile of rate volatility, inverted. Contextual only — national variable."
       - name: cpi_yoy_pct_score
-        description: "Monthly cross-sectional percentile score for cpi_yoy_pct, where lower is better."
-
+        description: "Cross-sectional percentile of inflation, inverted. Contextual only — national variable."
       - name: price_to_income_ratio_score
-        description: "Monthly cross-sectional percentile score for price_to_income_ratio, where lower is better."
-
+        description: "Cross-sectional percentile of price-to-income ratio, inverted. Higher = more affordable = better."
       - name: piti_rate_pressure_score
-        description: "Monthly cross-sectional percentile score for piti_rate_pressure, where lower is better."
-
+        description: "Cross-sectional percentile of PITI × rate interaction, inverted. Higher = lower payment stress = better."
       - name: rent_to_income_ratio_score
-        description: "Monthly cross-sectional percentile score for rent_to_income_ratio, where lower is better."
-
+        description: "Cross-sectional percentile of rent burden, inverted. Higher = more affordable rents = better."
       - name: piti_shock_score
-        description: "Monthly cross-sectional percentile score for piti_shock, where lower is better."
+        description: "Cross-sectional percentile of PITI × rate shock interaction, inverted. Higher = less shock exposure = better."
+
+  - name: gold_city_latest
+    description: >
+      Most recent month snapshot per city.
+      One row per city. Primary feed for frontend map, city cards, and rankings.
+      Includes HMLI score, all bucket scores, percentile scores, affordability
+      metrics, regime labels, and demographic context.
+      Excludes jobs_mom_pct and jobs_3m_pct — removed from silver_macro_state
+      as part of feature selection (high VIF, replaced by jobs_yoy_pct).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [city]
+    columns:
+      - name: city
+        tests: [not_null, unique]
+      - name: state
+        tests: [not_null]
+      - name: month
+        description: "Most recent data month for this city."
+        tests: [not_null]
+      - name: hmli_score
+        description: "Current HMLI score on 0–1 scale."
+        tests: [not_null]
+      - name: hmli_rank
+        description: "City rank by hmli_score. 1 = strongest market. Computed across all 60 cities."
+        tests: [not_null]
+      - name: hmli_quintile
+        description: "Quintile bucket (1–5). 1 = top 20% of markets. 5 = bottom 20%."
+      - name: hmli_decile
+        description: "Decile bucket (1–10). 1 = top 10% of markets. 10 = bottom 10%."
+      - name: housing_momentum_score
+        description: "Current 0–1 housing momentum bucket score."
+      - name: rent_strength_score
+        description: "Current 0–1 rent strength bucket score. Highest-weighted HMLI component (42.4%)."
+      - name: affordability_score
+        description: "Current 0–1 affordability bucket score."
+      - name: labor_score
+        description: "Current 0–1 labor market bucket score."
+      - name: labor_supply_score
+        description: "Current 0–1 supply pipeline score from permits."
+      - name: macro_rates_score
+        description: "Current macro context score. Excluded from HMLI — national variable, no cross-sectional signal."
+      - name: zhvi
+        description: "Current Zillow Home Value Index level."
+      - name: zori
+        description: "Current Zillow Observed Rent Index level."
+      - name: zhvi_yoy_smooth
+        description: "Current smoothed YoY home value growth rate."
+      - name: zhvi_mom_3m
+        description: "Current 3-month home value momentum."
+      - name: zhvi_volatility_6m
+        description: "Current 6-month home value volatility."
+      - name: zori_yoy_smooth
+        description: "Current smoothed YoY rent growth rate."
+      - name: zori_mom_3m
+        description: "Current 3-month rent momentum."
+      - name: zori_volatility_6m
+        description: "Current 6-month rent volatility."
+      - name: price_to_income_ratio
+        description: "Current ownership affordability ratio."
+      - name: rent_to_income_ratio
+        description: "Current rent burden ratio."
+      - name: mortgage_to_income_ratio
+        description: "Current mortgage-only payment burden ratio."
+      - name: piti_to_income_ratio
+        description: "Current full PITI payment burden ratio."
+      - name: monthly_piti
+        description: "Current estimated monthly PITI payment in dollars."
+      - name: monthly_mortgage_payment
+        description: "Current estimated monthly PI payment in dollars."
+      - name: monthly_property_tax
+        description: "Current estimated monthly property tax in dollars."
+      - name: monthly_insurance
+        description: "Current estimated monthly homeowner insurance in dollars."
+      - name: price_to_rent_ratio
+        description: "Current price-to-rent ratio. Above 20 = renting cheaper. Below 15 = buying cheaper."
+      - name: affordability_class
+        description: "Burden classification: affordable / cost_burdened / severely_burdened."
+      - name: piti_rate_pressure
+        description: "Current PITI × mortgage_rate interaction value."
+      - name: piti_shock
+        description: "Current PITI × mortgage_rate_12m_delta interaction value."
+      - name: unemployment_rate
+        description: "Current state unemployment rate."
+      - name: unemployment_3m_delta
+        description: "Current 3-month change in state unemployment."
+      - name: unemployment_mom_delta
+        description: "Current month-over-month change in state unemployment."
+      - name: unemployment_yoy_delta
+        description: "Current year-over-year change in state unemployment."
+      - name: unemployment_3m_smooth
+        description: "Current smoothed 3-month unemployment trend."
+      - name: jobs_yoy_pct
+        description: "Current state YoY nonfarm job growth."
+      - name: jobs_3m_smooth
+        description: "Current smoothed 3-month jobs growth."
+      - name: jobs_volatility_6m
+        description: "Current 6-month jobs volatility."
+      - name: permits_yoy_pct
+        description: "Current state YoY building permits growth."
+      - name: permits_volatility_6m
+        description: "Current 6-month permits volatility."
+      - name: wages_yoy_pct
+        description: "Current state YoY hourly wage growth."
+      - name: mortgage_rate
+        description: "Current national 30Y fixed mortgage rate."
+      - name: mortgage_rate_3m_delta
+        description: "Current 3-month change in national mortgage rate."
+      - name: mortgage_rate_12m_delta
+        description: "Current 12-month change in national mortgage rate."
+      - name: mortgage_rate_volatility_6m
+        description: "Current 6-month mortgage rate volatility."
+      - name: mortgage_rate_3m_smooth
+        description: "Current smoothed 3-month mortgage rate delta."
+      - name: cpi_yoy_pct
+        description: "Current national CPI YoY inflation."
+      - name: cpi
+        description: "Current CPI index level."
+      - name: rate_regime
+        description: "Current mortgage rate regime label: rising_fast / rising / stable / falling / falling_fast."
+      - name: inflation_regime
+        description: "Current inflation regime label: high_inflation / moderate_inflation / low_inflation / deflation."
+      - name: labor_regime
+        description: "Current labor market regime label: deteriorating_fast / deteriorating / stable / improving / improving_fast."
+      - name: supply_regime
+        description: "Current supply regime label: supply_expanding / supply_growing / supply_stable / supply_contracting / supply_contracting_fast."
+      - name: tax_regime
+        description: "Current property tax regime: high_tax / moderate_tax / low_tax."
+      - name: insurance_risk_tier
+        description: "Current insurance risk tier: high_risk / moderate_risk / standard_risk."
+      - name: climate_risk_tier
+        description: "Climate risk classification: severe / high / elevated / standard."
+      - name: tier
+        description: "City tier in 60-city universe (1=Primary, 2=Growth, 3=Emerging)."
+      - name: tier_label
+        description: "Human-readable tier label."
+      - name: population
+        description: "City population from Census ACS."
+      - name: median_income
+        description: "City median household income from Census ACS."
+      - name: monthly_income
+        description: "Monthly income: median_income / 12."
+      - name: metro_size
+        description: "Population bucket: large (3M+) / medium (1M+) / small (<1M)."
+      - name: lat
+        description: "City latitude for map display."
+      - name: lng
+        description: "City longitude for map display."
+      - name: hpa_12m_forward
+        description: "12-month forward HPA. NULL for most recent 12 months. Diagnostic only — not used in scoring."
+      - name: national_hpa
+        description: "National mean HPA for city's latest month. Diagnostic context."
+      - name: hpa_relative
+        description: "City HPA relative to national mean. ML training target. NULL for most recent 12 months."

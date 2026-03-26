@@ -3,36 +3,80 @@ WITH base AS (
         city,
         state,
         tier,
+        tier_label,
         month,
+        lat,
+        lng,
 
-        -- Housing momentum
+        -- Raw housing / rent levels
+        zhvi,
+        zori,
+
+        -- Housing momentum inputs
         zhvi_yoy_smooth,
         zhvi_mom_3m,
         zhvi_volatility_6m,
 
-        -- Rent strength
+        -- Rent strength inputs
         zori_yoy_smooth,
         zori_mom_3m,
         zori_volatility_6m,
 
-        -- Labor
+        -- Labor / supply inputs
         unemployment_rate,
+        unemployment_mom_delta,
         unemployment_3m_delta,
+        unemployment_yoy_delta,
+        unemployment_3m_smooth,
         jobs_yoy_pct,
-
-        -- Supply
+        jobs_3m_smooth,
+        jobs_volatility_6m,
         permits_yoy_pct,
+        permits_volatility_6m,
+        wages_yoy_pct,
 
-        -- Macro / rates
+        -- Macro inputs
+        mortgage_rate,
+        mortgage_rate_mom_delta,
         mortgage_rate_3m_delta,
+        mortgage_rate_12m_delta,
+        mortgage_rate_3m_smooth,
         mortgage_rate_volatility_6m,
+        cpi,
         cpi_yoy_pct,
 
-        -- Affordability
+        -- Affordability / payment inputs
         price_to_income_ratio,
-        piti_rate_pressure,
+        mortgage_to_income_ratio,
+        piti_to_income_ratio,
         rent_to_income_ratio,
-        piti_shock
+        price_to_rent_ratio,
+        monthly_mortgage_payment,
+        monthly_property_tax,
+        monthly_insurance,
+        monthly_piti,
+        piti_rate_pressure,
+        piti_shock,
+        affordability_class,
+
+        -- Regimes
+        labor_regime,
+        supply_regime,
+        rate_regime,
+        inflation_regime,
+        tax_regime,
+        insurance_risk_tier,
+
+        -- Demographics
+        population,
+        median_income,
+        monthly_income,
+        metro_size,
+
+        -- Targets / diagnostics
+        hpa_12m_forward,
+        national_hpa,
+        hpa_relative
 
     FROM {{ ref('gold_market_features') }}
 ),
@@ -43,8 +87,6 @@ ranked AS (
 
         -- =========================
         -- Housing momentum
-        -- higher growth = better
-        -- higher volatility = worse
         -- =========================
         PERCENT_RANK() OVER (
             PARTITION BY month ORDER BY zhvi_yoy_smooth
@@ -60,8 +102,6 @@ ranked AS (
 
         -- =========================
         -- Rent strength
-        -- higher growth = better
-        -- higher volatility = worse
         -- =========================
         PERCENT_RANK() OVER (
             PARTITION BY month ORDER BY zori_yoy_smooth
@@ -77,9 +117,6 @@ ranked AS (
 
         -- =========================
         -- Labor
-        -- lower unemployment = better
-        -- lower unemployment delta = better
-        -- higher jobs growth = better
         -- =========================
         1 - PERCENT_RANK() OVER (
             PARTITION BY month ORDER BY unemployment_rate
@@ -95,9 +132,7 @@ ranked AS (
 
         -- =========================
         -- Labor supply
-        -- here higher permits = better from a growth/market-health lens
-        -- if you want constrained supply to be rewarded instead,
-        -- flip this direction later
+        -- higher permits = stronger supply / growth support
         -- =========================
         PERCENT_RANK() OVER (
             PARTITION BY month ORDER BY permits_yoy_pct
@@ -105,7 +140,7 @@ ranked AS (
 
         -- =========================
         -- Macro / rates
-        -- higher inflation/rate shock/vol = worse
+        -- national variables -> contextual only
         -- =========================
         1 - PERCENT_RANK() OVER (
             PARTITION BY month ORDER BY mortgage_rate_3m_delta
@@ -121,7 +156,6 @@ ranked AS (
 
         -- =========================
         -- Affordability
-        -- higher burden/stretch/shock = worse
         -- =========================
         1 - PERCENT_RANK() OVER (
             PARTITION BY month ORDER BY price_to_income_ratio
@@ -146,7 +180,6 @@ bucketed AS (
     SELECT
         *,
 
-        -- Bucket scores
         ROUND((
             zhvi_yoy_smooth_score +
             zhvi_mom_3m_score +
@@ -185,64 +218,15 @@ bucketed AS (
 
 final AS (
     SELECT
-        city,
-        state,
-        tier,
-        month,
+        *,
 
-        -- Raw inputs
-        zhvi_yoy_smooth,
-        zhvi_mom_3m,
-        zhvi_volatility_6m,
-        zori_yoy_smooth,
-        zori_mom_3m,
-        zori_volatility_6m,
-        unemployment_rate,
-        unemployment_3m_delta,
-        jobs_yoy_pct,
-        permits_yoy_pct,
-        mortgage_rate_3m_delta,
-        mortgage_rate_volatility_6m,
-        cpi_yoy_pct,
-        price_to_income_ratio,
-        piti_rate_pressure,
-        rent_to_income_ratio,
-        piti_shock,
-
-        -- Feature scores
-        zhvi_yoy_smooth_score,
-        zhvi_mom_3m_score,
-        zhvi_volatility_6m_score,
-        zori_yoy_smooth_score,
-        zori_mom_3m_score,
-        zori_volatility_6m_score,
-        unemployment_rate_score,
-        unemployment_3m_delta_score,
-        jobs_yoy_pct_score,
-        permits_yoy_pct_score,
-        mortgage_rate_3m_delta_score,
-        mortgage_rate_volatility_6m_score,
-        cpi_yoy_pct_score,
-        price_to_income_ratio_score,
-        piti_rate_pressure_score,
-        rent_to_income_ratio_score,
-        piti_shock_score,
-
-        -- Bucket scores
-        housing_momentum_score,
-        rent_strength_score,
-        labor_score,
-        labor_supply_score,
-        macro_rates_score,
-        affordability_score,
-
-        -- Final HMLI score from ML model
+        -- Updated structural weights
         ROUND(
-            0.42 * rent_strength_score
-            + 0.34 * housing_momentum_score
-            + 0.15 * affordability_score
-            + 0.08 * labor_score
-            + 0.01 * labor_supply_score
+              0.423767 * rent_strength_score
+            + 0.338197 * housing_momentum_score
+            + 0.147739 * affordability_score
+            + 0.079770 * labor_score
+            + 0.010528 * labor_supply_score
         , 6) AS hmli_score
 
     FROM bucketed
